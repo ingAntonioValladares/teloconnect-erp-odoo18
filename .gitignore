@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Entorno y logs
+*.log
+.env
+
+# Directorios de datos locales de Postgres o datos persistentes (si creas alguna carpeta data)
+.dockerdata/
+*.db
+*.sqlite3
+
+# IDEs
+.vscode/
+.idea/

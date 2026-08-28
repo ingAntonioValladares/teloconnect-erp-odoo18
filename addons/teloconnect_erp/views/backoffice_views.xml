@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Secuencia Auto-incremental para Back Office -->
+    <record id="seq_teloconnect_backoffice" model="ir.sequence">
+        <name>Secuencia Back Office TeloConnect</name>
+        <code >teloconnect.backoffice</code>
+        <prefix>BO-</prefix>
+        <padding>5</padding>
+        <number_next>1</number_next>
+        <number_increment>1</number_increment>
+    </record>
+
+    <!-- Vista Formulario (Form View) -->
+    <record id="view_teloconnect_backoffice_form" model="ir.ui.view">
+        <name>teloconnect.backoffice.form</name>
+        <model>teloconnect.backoffice</model>
+        <arch type="xml">
+            <form string="Solicitud de Venta - Back Office">
+                <header>
+                    <button name="action_start_audit" string="Iniciar Auditoría" type="object" class="oe_highlight" invisible="state != 'recibido'"/>
+                    <button name="action_load_system" string="Cargar a Sistema" type="object" class="oe_highlight" invisible="state != 'en_auditoria'"/>
+                    <button name="action_create_inventory_order" string="Enviar a Almacén" type="object" class="oe_highlight" invisible="state != 'cargado_sistema'"/>
+                    <button name="action_reject" string="Rechazar Venta" type="object" class="btn-danger" invisible="state in ('orden_almacen', 'rechazado')"/>
+                    <button name="action_reset_to_draft" string="Reiniciar a Recibido" type="object" invisible="state != 'rechazado'"/>
+                    
+                    <field name="state" widget="statusbar" statusbar_visible="recibido,en_auditoria,cargado_sistema,orden_almacen"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Datos del Cliente">
+                            <field name="client_name"/>
+                            <field name="document_type"/>
+                            <field name="document_number"/>
+                            <field name="mobile_phone"/>
+                        </group>
+                        <group string="Detalle de la Venta">
+                            <field name="plan_type"/>
+                            <field name="monthly_rate"/>
+                            <field name="deco_qty"/>
+                            <field name="repeater_qty"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Ubicación Geográfica">
+                            <field name="installation_address"/>
+                            <field name="latitude"/>
+                            <field name="longitude"/>
+                        </group>
+                        <group string="Programación de Instalación">
+                            <field name="installation_date"/>
+                            <field name="installation_shift"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Checklist de Auditoría y Calidad">
+                            <group>
+                                <field name="audio_confirmed"/>
+                                <field name="risk_central_verified"/>
+                                <field name="nap_box_feasible"/>
+                            </group>
+                            <group string="Observaciones">
+                                <field name="audit_notes" placeholder="Detalle observaciones técnicas o de grabación..."/>
+                            </group>
+                        </page>
+                        <page string="Despachos de Almacén Asociados">
+                            <field name="dispatch_ids" readonly="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </arch>
+    </record>
+
+    <!-- Vista Lista / Tree (Diseñada para Exportación Power BI) -->
+    <record id="view_teloconnect_backoffice_tree" model="ir.ui.view">
+        <name>teloconnect.backoffice.list</name>
+        <model>teloconnect.backoffice</model>
+        <arch type="xml">
+            <list string="Ventas de Back Office">
+                <field name="name" string="ID Venta"/>
+                <field name="create_date" string="Fecha Carga"/>
+                <field name="client_name" string="Cliente"/>
+                <field name="document_number" string="DNI/RUC"/>
+                <field name="plan_type" string="Plan"/>
+                <field name="monthly_rate" string="Tarifa Mensual"/>
+                <field name="deco_qty" string="Cant Decos"/>
+                <field name="repeater_qty" string="Cant Repetidores"/>
+                <field name="latitude" string="Latitud"/>
+                <field name="longitude" string="Longitud"/>
+                <field name="installation_date" string="Fecha Instalación"/>
+                <field name="state" string="Estado Back Office" widget="badge" 
+                       decoration-info="state == 'recibido'"
+                       decoration-warning="state == 'en_auditoria'"
+                       decoration-success="state in ('cargado_sistema', 'orden_almacen')"
+                       decoration-danger="state == 'rechazado'"/>
+            </list>
+        </arch>
+    </record>
+
+    <!-- Vista Kanban -->
+    <record id="view_teloconnect_backoffice_kanban" model="ir.ui.view">
+        <name>teloconnect.backoffice.kanban</name>
+        <model>teloconnect.backoffice</model>
+        <arch type="xml">
+            <kanban default_group_by="state" quick_create="false">
+                <field name="name"/>
+                <field name="client_name"/>
+                <field name="plan_type"/>
+                <field name="monthly_rate"/>
+                <field name="state"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_card oe_kanban_global_click">
+                            <div class="oe_kanban_content">
+                                <strong><field name="name"/></strong> - <field name="client_name"/>
+                                <div><small>Plan: <field name="plan_type"/></small></div>
+                                <div><small>Tarifa: S/ <field name="monthly_rate"/></small></div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </arch>
+    </record>
+
+    <!-- Acción para abrir Back Office -->
+    <record id="action_teloconnect_backoffice" model="ir.actions.act_window">
+        <name>Gestión de Back Office</name>
+        <res_model>teloconnect.backoffice</res_model>
+        <view_mode>list,kanban,form</view_mode>
+        <help type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay ventas en Back Office registradas aún.
+            </p>
+        </help>
+    </record>
+
+    <!-- Menú Principal del Sistema -->
+    <menuitem id="menu_teloconnect_root" name="TeloConnect ERP" sequence="10"/>
+    
+    <!-- Submenú de Back Office -->
+    <menuitem id="menu_teloconnect_backoffice" name="Back Office" parent="menu_teloconnect_root" action="action_teloconnect_backoffice" sequence="10"/>
+</odoo>

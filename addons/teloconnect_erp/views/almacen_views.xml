@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Secuencia Auto-incremental para Almacén -->
+    <record id="seq_teloconnect_inventory_dispatch" model="ir.sequence">
+        <name>Secuencia Despacho Almacén TeloConnect</name>
+        <code >teloconnect.inventory.dispatch</code>
+        <prefix>DISP-</prefix>
+        <padding>5</padding>
+        <number_next>1</number_next>
+        <number_increment>1</number_increment>
+    </record>
+
+    <!-- Vista Formulario de Almacén -->
+    <record id="view_teloconnect_almacen_form" model="ir.ui.view">
+        <name>teloconnect.inventory.dispatch.form</name>
+        <model>teloconnect.inventory.dispatch</model>
+        <arch type="xml">
+            <form string="Orden de Despacho de Equipos">
+                <header>
+                    <button name="action_assign_equipment" string="Validar y Asignar Equipos" type="object" class="oe_highlight" invisible="state != 'pendiente_asig'"/>
+                    <button name="action_dispatch" string="Despachar a Cuadrilla" type="object" class="oe_highlight" invisible="state != 'equipos_asignados'"/>
+                    <button name="action_mark_delivered" string="Marcar Entregado" type="object" class="oe_highlight" invisible="state != 'despachado'"/>
+                    
+                    <field name="state" widget="statusbar" statusbar_visible="pendiente_asig,equipos_asignados,despachado,entregado_tecnico"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Información de la Venta">
+                            <field name="backoffice_id" readonly="1"/>
+                            <field name="client_name"/>
+                            <field name="installation_address"/>
+                        </group>
+                        <group string="Resumen de Requerimientos">
+                            <field name="required_decos"/>
+                            <field name="required_repeaters"/>
+                        </group>
+                    </group>
+                    <group string="Asignación de Números de Serie / MAC Address">
+                        <group>
+                            <field name="deco_series" placeholder="Ingrese las MACs de los Decos separadas por comas o líneas (Ej: 00:1A:2B:3C:4D:5E)"/>
+                        </group>
+                        <group>
+                            <field name="repeater_series" placeholder="Ingrese las MACs de los Repetidores separadas por comas o líneas (Ej: FE:DC:BA:98:76:54)"/>
+                        </group>
+                    </group>
+                    <group string="Despacho Técnico">
+                        <group>
+                            <field name="technician_id"/>
+                        </group>
+                        <group>
+                            <field name="technician_notes" placeholder="Notas sobre el despacho o cuadrilla..."/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </arch>
+    </record>
+
+    <!-- Vista Lista / Tree de Almacén (Diseñada para Exportación Power BI) -->
+    <record id="view_teloconnect_almacen_tree" model="ir.ui.view">
+        <name>teloconnect.inventory.dispatch.list</name>
+        <model>teloconnect.inventory.dispatch</model>
+        <arch type="xml">
+            <list string="Despachos de Almacén">
+                <field name="name" string="ID Despacho"/>
+                <field name="create_date" string="Fecha Orden"/>
+                <field name="backoffice_id" string="ID Venta"/>
+                <field name="client_name" string="Cliente"/>
+                <field name="required_decos" string="Cant Decos"/>
+                <field name="deco_series" string="Serie Deco"/>
+                <field name="required_repeaters" string="Cant Repetidores"/>
+                <field name="repeater_series" string="Serie Repetidor"/>
+                <field name="technician_id" string="Técnico Responsable"/>
+                <field name="state" string="Estado Almacén" widget="badge"
+                       decoration-info="state == 'pendiente_asig'"
+                       decoration-warning="state == 'equipos_asignados'"
+                       decoration-primary="state == 'despachado'"
+                       decoration-success="state == 'entregado_tecnico'"/>
+            </list>
+        </arch>
+    </record>
+
+    <!-- Vista Kanban de Almacén -->
+    <record id="view_teloconnect_almacen_kanban" model="ir.ui.view">
+        <name>teloconnect.inventory.dispatch.kanban</name>
+        <model>teloconnect.inventory.dispatch</model>
+        <arch type="xml">
+            <kanban default_group_by="state" quick_create="false">
+                <field name="name"/>
+                <field name="client_name"/>
+                <field name="technician_id"/>
+                <field name="state"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_card oe_kanban_global_click">
+                            <div class="oe_kanban_content">
+                                <strong><field name="name"/></strong> - <field name="client_name"/>
+                                <div><small>Técnico: <field name="technician_id"/></small></div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </arch>
+    </record>
+
+    <!-- Acción para abrir Almacén -->
+    <record id="action_teloconnect_almacen" model="ir.actions.act_window">
+        <name>Gestión de Almacén y Despacho</name>
+        <res_model>teloconnect.inventory.dispatch</res_model>
+        <view_mode>list,kanban,form</view_mode>
+        <help type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay órdenes de despacho pendientes en Almacén.
+            </p>
+        </help>
+    </record>
+
+    <!-- Submenú de Almacén -->
+    <menuitem id="menu_teloconnect_almacen" name="Almacén y Despacho" parent="menu_teloconnect_root" action="action_teloconnect_almacen" sequence="20"/>
+</odoo>

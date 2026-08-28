@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Venta 1: Recibida HOY -->
+        <record id="demo_bo_sale_1" model="teloconnect.backoffice">
+            <field name="client_name">Juan Carlos Pérez Gómez</field>
+            <field name="document_type">dni</field>
+            <field name="document_number">45871239</field>
+            <field name="mobile_phone">987654321</field>
+            <field name="installation_address">Av. Javier Prado Este 2450, San Borja, Lima</field>
+            <field name="latitude">-12.086412</field>
+            <field name="longitude">-77.001548</field>
+            <field name="plan_type">trio_hogar</field>
+            <field name="monthly_rate">129.90</field>
+            <field name="deco_qty">2</field>
+            <field name="repeater_qty">1</field>
+            <field name="audio_confirmed">True</field>
+            <field name="risk_central_verified">True</field>
+            <field name="nap_box_feasible">True</field>
+            <field name="installation_date" eval="(datetime.now() + timedelta(days=2)).strftime('%Y-%m-%d')"/>
+            <field name="installation_shift">mañana</field>
+            <field name="state">en_auditoria</field>
+        </record>
+
+        <!-- Venta 2: Cargada en Sistema Commercial -->
+        <record id="demo_bo_sale_2" model="teloconnect.backoffice">
+            <field name="client_name">Empresa Distribuidora Norte S.A.C.</field>
+            <field name="document_type">ruc</field>
+            <field name="document_number">20601234567</field>
+            <field name="mobile_phone">912345678</field>
+            <field name="installation_address">Calle Los Pinos 142, Miraflores, Lima</field>
+            <field name="latitude">-12.121543</field>
+            <field name="longitude">-77.029812</field>
+            <field name="plan_type">duo_hogar</field>
+            <field name="monthly_rate">89.90</field>
+            <field name="deco_qty">1</field>
+            <field name="repeater_qty">1</field>
+            <field name="audio_confirmed">True</field>
+            <field name="risk_central_verified">True</field>
+            <field name="nap_box_feasible">True</field>
+            <field name="installation_date" eval="(datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')"/>
+            <field name="installation_shift">tarde</field>
+            <field name="state">cargado_sistema</field>
+        </record>
+
+        <!-- Venta 3: Monoplan Fibra Rechazado por Riesgo -->
+        <record id="demo_bo_sale_3" model="teloconnect.backoffice">
+            <field name="client_name">Maria Elena Rodriguez</field>
+            <field name="document_type">dni</field>
+            <field name="document_number">71234568</field>
+            <field name="mobile_phone">976543210</field>
+            <field name="installation_address">Jr. Huallaga 450, Cercado de Lima, Lima</field>
+            <field name="latitude">-12.045612</field>
+            <field name="longitude">-77.028945</field>
+            <field name="plan_type">monoplan_fibra</field>
+            <field name="monthly_rate">69.90</field>
+            <field name="deco_qty">0</field>
+            <field name="repeater_qty">1</field>
+            <field name="audio_confirmed">True</field>
+            <field name="risk_central_verified">False</field>
+            <field name="nap_box_feasible">True</field>
+            <field name="audit_notes">Cliente observado en Infocorp con deuda activa operador previo.</field>
+            <field name="state">rechazado</field>
+        </record>
+
+        <!-- Venta 4: Lista para Almacén -->
+        <record id="demo_bo_sale_4" model="teloconnect.backoffice">
+            <field name="client_name">Roberto Carlos Mendoza</field>
+            <field name="document_type">dni</field>
+            <field name="document_number">10452389</field>
+            <field name="mobile_phone">955443322</field>
+            <field name="installation_address">Av. Arequipa 1230, Lince, Lima</field>
+            <field name="latitude">-12.078912</field>
+            <field name="longitude">-77.034512</field>
+            <field name="plan_type">trio_hogar</field>
+            <field name="monthly_rate">149.90</field>
+            <field name="deco_qty">3</field>
+            <field name="repeater_qty">2</field>
+            <field name="audio_confirmed">True</field>
+            <field name="risk_central_verified">True</field>
+            <field name="nap_box_feasible">True</field>
+            <field name="installation_date" eval="(datetime.now() + timedelta(days=3)).strftime('%Y-%m-%d')"/>
+            <field name="installation_shift">mañana</field>
+            <field name="state">orden_almacen</field>
+        </record>
+
+        <!-- Generación de Orden en Almacén vinculada a Venta 4 -->
+        <record id="demo_dispatch_1" model="teloconnect.inventory.dispatch">
+            <field name="backoffice_id" ref="demo_bo_sale_4"/>
+            <field name="deco_series">47A2B901, 47A2B902, 47A2B903</field>
+            <field name="repeater_series">RP-9981A, RP-9981B</field>
+            <field name="state">pendiente_asig</field>
+        </record>
+    </data>
+</odoo>
