@@ -2,127 +2,74 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
-class TeloConnectInventoryDispatch(models.Model):
+class TeloConnectAlmacen(models.Model):
     _name = 'teloconnect.almacen'
-    _description = 'Gestion de Almacen'
+    _description = 'Despacho de Almacén y Logística'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'id desc'
 
     name = fields.Char(
-        string='Código de Despacho',
-        required=True,
-        copy=False,
-        readonly=True,
+        string='Código de Despacho', 
+        required=True, 
+        copy=False, 
+        readonly=True, 
         default=lambda self: _('Nuevo')
     )
-
+    
     backoffice_id = fields.Many2one(
-        comodel_name='teloconnect.backoffice',
-        string='Orden de Back Office',
-        required=True,
+        'teloconnect.backoffice', 
+        string='Orden de Back Office', 
+        required=True, 
         ondelete='cascade',
         tracking=True
     )
-    client_name = fields.Char(
-        related='backoffice_id.client_name',
-        string='Cliente',
-        store=True,
-        readonly=True
-    )
-    installation_address = fields.Text(
-        related='backoffice_id.installation_address',
-        string='Dirección de Instalación',
-        readonly=True
-    )
-
-    required_decos = fields.Integer(
-        related='backoffice_id.deco_qty',
-        string='Decos Requeridos',
-        readonly=True
-    )
-    required_repeaters = fields.Integer(
-        related='backoffice_id.repeater_qty',
-        string='Repetidores Requeridos',
-        readonly=True
-    )
-
-    deco_series = fields.Text(
-        string='Series / MAC Address Decodificadores',
-        help='Ingrese cada número de serie o MAC separado por comas o saltos de línea.',
-        tracking=True
-    )
-    repeater_series = fields.Text(
-        string='Series / MAC Address Repetidores Wi-Fi',
-        help='Ingrese cada número de serie o MAC separado por comas o saltos de línea.',
-        tracking=True
-    )
-
-    technician_id = fields.Many2one(
-        comodel_name='res.users',
-        string='Técnico / Cuadrilla Asignada',
-        tracking=True
-    )
-    technician_notes = fields.Text(
-        string='Observaciones de Despacho'
-    )
-
-    state = fields.Selection(
-        selection=[
-            ('pendiente_asig', 'Pendiente Asignación'),
-            ('equipos_asignados', 'Equipos Asignados'),
-            ('despachado', 'Despachado'),
-            ('entregado_tecnico', 'Entregado a Técnico'),
-        ],
-        string='Estado Almacén',
-        default='pendiente_asig',
-        required=True,
-        index=True,
-        tracking=True
-    )
+    
+    # Campos espejo
+    client_name = fields.Char(related='backoffice_id.client_name', string='Cliente', readonly=True)
+    district = fields.Char(related='backoffice_id.district', string='Distrito', readonly=True)
+    installation_address = fields.Char(related='backoffice_id.installation_address', string='Dirección', readonly=True)
+    deco_qty_required = fields.Integer(related='backoffice_id.deco_qty', string='Decos Requeridos', readonly=True)
+    repeater_qty_required = fields.Integer(related='backoffice_id.repeater_qty', string='Repetidores Requeridos', readonly=True)
+    
+    # Asignación Logística (Como Texto para evitar conflictos de llaves foráneas)
+    technician_id = fields.Char(string='Técnico / Cuadrilla Asignada', tracking=True)
+    dispatch_date = fields.Date(string='Fecha de Despacho', default=fields.Date.context_today)
+    
+    deco_series = fields.Text(string='Series / MAC Address Decodificadores')
+    repeater_series = fields.Text(string='Series / MAC Address Repetidores Wi-Fi')
+    
+    state = fields.Selection([
+        ('pendiente_asig', 'Pendiente Asignación'),
+        ('equipos_asignados', 'Equipos Asignados'),
+        ('despachado', 'Despachado'),
+        ('entregado_tecnico', 'Entregado a Técnico')
+    ], string='Estado Logístico', default='pendiente_asig', tracking=True)
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if vals.get('name', _('Nuevo')) == _('Nuevo'):
-                vals['name'] = self.env['ir.sequence'].next_by_code('teloconnect.inventory.dispatch') or _('Nuevo')
-        return super(TeloConnectInventoryDispatch, self).create(vals_list)
+            if vals.get('name', 'Nuevo') == 'Nuevo':
+                vals['name'] = self.env['ir.sequence'].next_by_code('teloconnect.almacen') or 'Nuevo'
+        return super().create(vals_list)
 
     def action_assign_equipment(self):
-        for rec in self:
-            if rec.required_decos > 0:
-                if not rec.deco_series:
-                    raise ValidationError(_('Debe registrar las series / MAC Address de los Decodificadores.'))
-                series_list = [s.strip() for s in rec.deco_series.replace('\n', ',').split(',') if s.strip()]
-                if len(series_list) != rec.required_decos:
-                    raise ValidationError(_(
-                        'Se requieren %(req)d serie(s) de Decodificador(es), pero se ingresaron %(count)d.',
-                        req=rec.required_decos,
-                        count=len(series_list)
-                    ))
+        for record in self:
+            decos_list = [s.strip() for s in (record.deco_series or '').replace('\n', ',').split(',') if s.strip()]
+            repeaters_list = [s.strip() for s in (record.repeater_series or '').replace('\n', ',').split(',') if s.strip()]
 
-            if rec.required_repeaters > 0:
-                if not rec.repeater_series:
-                    raise ValidationError(_('Debe registrar las series / MAC Address de los Repetidores Wi-Fi.'))
-                series_rep_list = [s.strip() for s in rec.repeater_series.replace('\n', ',').split(',') if s.strip()]
-                if len(series_rep_list) != rec.required_repeaters:
-                    raise ValidationError(_(
-                        'Se requieren %(req)d serie(s) de Repetidor(es), pero se ingresaron %(count)d.',
-                        req=rec.required_repeaters,
-                        count=len(series_rep_list)
-                    ))
+            if len(decos_list) != record.deco_qty_required:
+                raise ValidationError(
+                    _("Error de Cantidad: Se requieren %d series de Decodificadores y se han ingresado %d.") % 
+                    (record.deco_qty_required, len(decos_list))
+                )
 
-            rec.write({'state': 'equipos_asignados'})
+            if len(repeaters_list) != record.repeater_qty_required:
+                raise ValidationError(
+                    _("Error de Cantidad: Se requieren %d series de Repetidores y se han ingresado %d.") % 
+                    (record.repeater_qty_required, len(repeaters_list))
+                )
 
-    def action_dispatch(self):
-        for rec in self:
-            if rec.state != 'equipos_asignados':
-                raise ValidationError(_('Primero debe asignar los equipos antes de despachar.'))
-            if not rec.technician_id:
-                raise ValidationError(_('Debe asignar un técnico o cuadrilla para realizar el despacho.'))
-            rec.write({'state': 'despachado'})
+            if not record.technician_id:
+                raise ValidationError(_("Debe asignar un Técnico o Cuadrilla antes de procesar el despacho."))
 
-    def action_mark_delivered(self):
-        for rec in self:
-            if rec.state != 'despachado':
-                raise ValidationError(_('La orden debe estar en estado Despachado.'))
-            rec.write({'state': 'entregado_tecnico'})
+            record.state = 'entregado_tecnico'

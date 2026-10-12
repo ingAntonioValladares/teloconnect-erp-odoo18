@@ -2,32 +2,25 @@
 <odoo>
     <data>
 
-        <!-- Form View -->
+        <!-- Secuencia Automática para Despachos de Almacén -->
+        <record id="seq_teloconnect_almacen" model="ir.sequence">
+            <field name="name">Secuencia Despacho Almacén</field>
+            <field name="code">teloconnect.almacen</field>
+            <field name="prefix">DESP/</field>
+            <field name="padding">5</field>
+            <field name="number_increment">1</field>
+            <field name="number_next">1</field>
+        </record>
+
+        <!-- Vista Formulario para Almacén -->
         <record id="view_teloconnect_almacen_form" model="ir.ui.view">
             <field name="name">teloconnect.almacen.form</field>
             <field name="model">teloconnect.almacen</field>
             <field name="arch" type="xml">
                 <form string="Despacho de Almacén">
                     <header>
-                        <button name="action_assign_equipment" 
-                                string="Asignar Equipos" 
-                                type="object" 
-                                class="oe_highlight" 
-                                invisible="state != 'pendiente_asig'"/>
-                        
-                        <button name="action_dispatch" 
-                                string="Despachar" 
-                                type="object" 
-                                class="oe_highlight" 
-                                invisible="state != 'equipos_asignados'"/>
-                        
-                        <button name="action_mark_delivered" 
-                                string="Entregar a Técnico" 
-                                type="object" 
-                                class="oe_highlight" 
-                                invisible="state != 'despachado'"/>
-                        
-                        <field name="state" widget="statusbar" statusbar_visible="pendiente_asig,equipos_asignados,despachado,entregado_tecnico"/>
+                        <button name="action_assign_equipment" string="Confirmar Despacho y Asignar Equipos" type="object" class="btn-primary" invisible="state == 'entregado_tecnico'"/>
+                        <field name="state" widget="statusbar" statusbar_visible="pendiente_asig,equipos_asignados,entregado_tecnico"/>
                     </header>
                     <sheet>
                         <div class="oe_title">
@@ -36,35 +29,29 @@
                             </h1>
                         </div>
                         <group>
-                            <group string="Información General">
+                            <group string="Referencia Comercial">
                                 <field name="backoffice_id"/>
                                 <field name="client_name"/>
+                                <field name="district"/>
                                 <field name="installation_address"/>
                             </group>
-                            <group string="Requerimientos y Técnico">
-                                <field name="required_decos"/>
-                                <field name="required_repeaters"/>
+                            <group string="Logística y Cuadrilla">
                                 <field name="technician_id"/>
+                                <field name="dispatch_date"/>
+                                <field name="deco_qty_required"/>
+                                <field name="repeater_qty_required"/>
                             </group>
                         </group>
-                        <notebook>
-                            <page string="Series y MAC Address">
-                                <group>
-                                    <field name="deco_series"/>
-                                    <field name="repeater_series"/>
-                                </group>
-                            </page>
-                            <page string="Observaciones">
-                                <field name="technician_notes"/>
-                            </page>
-                        </notebook>
+                        <group string="Control de Activos Fijos (Trazabilidad)">
+                            <field name="deco_series" placeholder="Ingrese las series de los decodificadores separadas por comas..."/>
+                            <field name="repeater_series" placeholder="Ingrese las direcciones MAC de los repetidores separadas por comas..."/>
+                        </group>
                     </sheet>
-                    <chatter/>
                 </form>
             </field>
         </record>
 
-        <!-- List View -->
+        <!-- Vista Lista para Almacén -->
         <record id="view_teloconnect_almacen_tree" model="ir.ui.view">
             <field name="name">teloconnect.almacen.list</field>
             <field name="model">teloconnect.almacen</field>
@@ -73,22 +60,26 @@
                     <field name="name"/>
                     <field name="backoffice_id"/>
                     <field name="client_name"/>
+                    <field name="district"/>
                     <field name="technician_id"/>
-                    <field name="state" widget="badge"/>
+                    <field name="state" widget="badge" decoration-warning="state == 'pendiente_asig'" decoration-success="state == 'entregado_tecnico'"/>
                 </list>
             </field>
         </record>
 
-        <!-- Action -->
+        <!-- Acción de Ventana para Almacén -->
         <record id="action_teloconnect_almacen" model="ir.actions.act_window">
-            <field name="name">Despacho de Almacén</field>
+            <field name="name">Gestión de Almacén</field>
             <field name="res_model">teloconnect.almacen</field>
             <field name="view_mode">list,form</field>
         </record>
 
-        <!-- Menu items -->
-        <menuitem id="menu_teloconnect_root" name="TeloConnect ERP" sequence="10"/>
-        <menuitem id="menu_teloconnect_almacen" name="Gestión de Almacén" parent="menu_teloconnect_root" action="action_teloconnect_almacen" sequence="10"/>
+        <!-- Menú de Almacén -->
+        <menuitem id="menu_teloconnect_almacen" 
+                  name="Gestión de Almacén" 
+                  parent="menu_teloconnect_root" 
+                  action="action_teloconnect_almacen" 
+                  sequence="10"/>
 
     </data>
 </odoo>

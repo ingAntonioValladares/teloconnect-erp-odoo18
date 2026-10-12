@@ -7,10 +7,12 @@ services:
       - "8069:8069"
     volumes:
       - ./addons:/mnt/extra-addons
+      - ./odoo.conf:/etc/odoo/odoo.conf
     environment:
       - HOST=db
       - USER=odoo
       - PASSWORD=odoo
+    command: odoo --config=/etc/odoo/odoo.conf
 
   db:
     image: postgres:15
@@ -18,3 +20,8 @@ services:
       - POSTGRES_DB=postgres
       - POSTGRES_PASSWORD=odoo
       - POSTGRES_USER=odoo
+    volumes:
+      - odoo-db-data:/var/lib/postgresql/data
+
+volumes:
+  odoo-db-data:

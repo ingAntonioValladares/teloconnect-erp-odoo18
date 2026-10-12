@@ -2,12 +2,34 @@
 <odoo>
     <data>
 
+        <!-- Secuencia Automática para el Back Office -->
+        <record id="seq_teloconnect_backoffice" model="ir.sequence">
+            <field name="name">Secuencia Back Office TeloConnect</field>
+            <field name="code">teloconnect.backoffice</field>
+            <field name="prefix">BO/</field>
+            <field name="padding">5</field>
+            <field name="number_increment">1</field>
+            <field name="number_next">1</field>
+        </record>
+
+        <!-- Menú Principal Raíz -->
+        <menuitem id="menu_teloconnect_root" 
+                  name="TeloConnect ERP" 
+                  sequence="10"/>
+
         <!-- Vista Formulario para Back Office -->
         <record id="view_teloconnect_backoffice_form" model="ir.ui.view">
             <field name="name">teloconnect.backoffice.form</field>
             <field name="model">teloconnect.backoffice</field>
             <field name="arch" type="xml">
                 <form string="Orden de Back Office">
+                    <header>
+                        <button name="action_validate" string="Enviar a Validación" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                        <button name="action_approve" string="Aprobar Orden" type="object" class="btn-success" invisible="state not in ('draft', 'validation')"/>
+                        <button name="action_reject" string="Rechazar" type="object" class="btn-danger" invisible="state not in ('draft', 'validation')"/>
+                        <button name="action_draft" string="Volver a Borrador" type="object" invisible="state != 'rejected'"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,validation,approved,rejected"/>
+                    </header>
                     <sheet>
                         <div class="oe_title">
                             <h1>
@@ -18,14 +40,15 @@
                             <group string="Datos del Cliente">
                                 <field name="client_name"/>
                                 <field name="installation_address"/>
+                                <field name="district"/>
                             </group>
-                            <group string="Equipos Requeridos">
+                            <group string="Equipos Requeridos &amp; Auditoría">
                                 <field name="deco_qty"/>
                                 <field name="repeater_qty"/>
+                                <field name="rejection_reason" invisible="state != 'rejected'" required="state == 'rejected'"/>
                             </group>
                         </group>
                     </sheet>
-                    <chatter/>
                 </form>
             </field>
         </record>
@@ -38,8 +61,10 @@
                 <list string="Órdenes de Back Office">
                     <field name="name"/>
                     <field name="client_name"/>
+                    <field name="district"/>
                     <field name="deco_qty"/>
                     <field name="repeater_qty"/>
+                    <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-warning="state == 'validation'" decoration-success="state == 'approved'" decoration-danger="state == 'rejected'"/>
                 </list>
             </field>
         </record>

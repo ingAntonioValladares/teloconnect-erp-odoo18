@@ -1,57 +1,60 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api, _
+from odoo import models, fields, api
+from odoo.exceptions import ValidationError
 
-class TeloConnectBackOffice(models.Model):
+class TeloConnectBackoffice(models.Model):
     _name = 'teloconnect.backoffice'
     _description = 'Orden de Back Office'
     _inherit = ['mail.thread', 'mail.activity.mixin']
-    _order = 'id desc'
 
-    name = fields.Char(string='Orden de Back Office', required=True, copy=False, readonly=True, default=lambda self: _('Nuevo'))
+    name = fields.Char(
+        string='Número de Orden', 
+        required=True, 
+        copy=False, 
+        readonly=True, 
+        default=lambda self: 'Nuevo'
+    )
+    client_name = fields.Char(string='Nombre del Cliente', required=True)
+    installation_address = fields.Char(string='Dirección Completa', required=True)  # <-- Char
+    district = fields.Char(string='Distrito', required=True)
+    deco_qty = fields.Integer(string='Cantidad de Decos', default=2)
+    repeater_qty = fields.Integer(string='Cantidad de Repetidores', default=0)
     
-    # Datos del Cliente
-    client_name = fields.Char(string='Nombre del Cliente', required=True, tracking=True)
-    client_dni = fields.Char(string='DNI', size=8, tracking=True)
-    client_age = fields.Integer(string='Edad')
-    client_phone = fields.Char(string='Teléfono de Contacto', tracking=True)
-    
-    # Ubicación Geográfica (Lambayeque)
-    department = fields.Char(string='Departamento', default='Lambayeque', readonly=True)
-    province = fields.Selection([
-        ('chiclayo', 'Chiclayo'),
-        ('lambayeque', 'Lambayeque'),
-        ('ferrenafe', 'Ferreñafe')
-    ], string='Provincia', required=True, default='chiclayo', tracking=True)
-    district = fields.Char(string='Distrito', required=True, tracking=True)
-    installation_address = fields.Text(string='Dirección Completa', required=True)
-    
-    # Datos Comerciales
-    advisor_id = fields.Char(string='Asesor Comercial', tracking=True)
-    
-    # Requerimientos de Equipos
-    deco_qty = fields.Integer(string='Cantidad de Decos', default=0, tracking=True)
-    repeater_qty = fields.Integer(string='Cantidad de Repetidores', default=0, tracking=True)
-    
-    # Fechas de Control y Trazabilidad
-    sale_date = fields.Datetime(string='Fecha de Venta', default=fields.Datetime.now, required=True)
-    scheduled_install_date = fields.Date(string='Fecha Programada Instalación')
-    actual_install_date = fields.Date(string='Fecha Real Instalación')
-    
-    # Estados y Motivos de Rechazo / Corrección
-    status = fields.Selection([
-        ('en_validacion', 'En Validación BO'),
-        ('en_correcion', 'Devuelto para Corrección'),
-        ('aprobado', 'Aprobado / Pendiente Instalación'),
-        ('instalado', 'Instalado Exitosamente'),
-        ('reprogramado', 'Reprogramado'),
-        ('rechazado', 'Rechazado por BO'),
-        ('cancelado', 'Cancelado por Cliente')
-    ], string='Estado Comercial', default='en_validacion', required=True, tracking=True)
+    state = fields.Selection([
+        ('draft', 'Borrador'),
+        ('validation', 'En Validación'),
+        ('approved', 'Aprobado'),
+        ('rejected', 'Rechazado')
+    ], string='Estado', default='draft', tracking=True)
 
     rejection_reason = fields.Selection([
-        ('mala_oferta', 'Mala Oferta / Error en Precios'),
-        ('sin_cobertura', 'Falta de Cobertura Técnica'),
-        ('exceso_equipos', 'Exceso de Equipos Solicitados'),
-        ('direccion_erronea', 'Dirección Incorrecta / Incompleta'),
-        ('contacto_invalido', 'Teléfono de Contacto Erróneo')
+        ('bad_offer', 'Mala oferta'),
+        ('excess_decos', 'Exceso de decos'),
+        ('no_coverage', 'Incobertura'),
+        ('bad_data', 'Datos erróneos')
     ], string='Motivo de Rechazo', tracking=True)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('name', 'Nuevo') == 'Nuevo':
+                vals['name'] = self.env['ir.sequence'].next_by_code('teloconnect.backoffice') or 'Nuevo'
+        return super().create(vals_list)
+
+    def action_validate(self):
+        for rec in self:
+            rec.state = 'validation'
+
+    def action_approve(self):
+        for rec in self:
+            rec.state = 'approved'
+
+    def action_reject(self):
+        for rec in self:
+            if not rec.rejection_reason:
+                raise ValidationError("Debe seleccionar obligatoriamente un motivo de rechazo antes de rechazar la orden.")
+            rec.state = 'rejected'
+
+    def action_draft(self):
+        for rec in self:
+            rec.state = 'draft'
