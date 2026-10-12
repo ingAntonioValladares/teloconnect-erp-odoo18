@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="seq_teloconnect_backoffice" model="ir.sequence">
+            <field name="name">Secuencia Back Office</field>
+            <field name="code">teloconnect.backoffice</field>
+            <field name="prefix">BO/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>
