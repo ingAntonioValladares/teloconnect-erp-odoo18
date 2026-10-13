@@ -1,18 +1,18 @@
-# -*- coding: utf-8 -*-
 {
     'name': 'TeloConnect ERP',
-    'version': '1.0',
-    'summary': 'Gestion de Back Office y Almacen',
-    'category': 'Services',
-    'author': 'TeloConnect',
-    'license': 'LGPL-3',
+    'version': '18.0.1.0.0',
+    'category': 'Operations',
+    'summary': 'Módulo de Back Office y Almacén para TeloConnect',
     'depends': ['base', 'mail', 'stock'],
     'data': [
-        'security/ir.model.access.csv',
-        'security/ir_sequence_data.xml',
-        'views/backoffice_views.xml',
-        'views/almacen_views.xml',
+    'security/security_groups.xml',
+    'security/ir.model.access.csv',
+    'security/ir_sequence_data.xml',  # <-- Verifica que la ruta coincida
+    'views/backoffice_views.xml',
+    'views/almacen_views.xml',
     ],
+    'application': True,  # <-- ¡ESTO ES VITAL PARA QUE APAREZCA COMO APLICACIÓN PRINCIPAL!
     'installable': True,
-    'application': True,
+    'auto_install': False,
+    'license': 'LGPL-3',
 }

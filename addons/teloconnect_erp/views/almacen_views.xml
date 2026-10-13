@@ -1,76 +1,74 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Vista List / Tree -->
-    <record id="view_teloconnect_almacen_tree" model="ir.ui.view">
-        <field name="name">teloconnect.almacen.tree</field>
-        <field name="model">teloconnect.almacen</field>
-        <field name="arch" type="xml">
-            <list string="Despachos de Almacén">
-                <field name="name"/>
-                <field name="backoffice_id"/>
-                <field name="client_name"/>
-                <field name="district"/>
-                <field name="technician_id"/>
-                <field name="dispatch_date"/>
-                <field name="state"/>
-            </list>
-        </field>
-    </record>
+    <data>
+        <!-- Vista List / Tree para Almacén -->
+        <record id="view_teloconnect_almacen_tree" model="ir.ui.view">
+            <field name="name">teloconnect.almacen.list</field>
+            <field name="model">teloconnect.almacen</field>
+            <field name="arch" type="xml">
+                <list string="Despachos de Almacén">
+                    <field name="name"/>
+                    <field name="backoffice_id"/>
+                    <field name="client_name"/>
+                    <field name="district"/>
+                    <field name="technician_id"/>
+                    <field name="dispatch_date"/>
+                    <field name="state"/>
+                </list>
+            </field>
+        </record>
 
-    <!-- Vista Form -->
-    <record id="view_teloconnect_almacen_form" model="ir.ui.view">
-        <field name="name">teloconnect.almacen.form</field>
-        <field name="model">teloconnect.almacen</field>
-        <field name="arch" type="xml">
-            <form string="Despacho de Almacén">
-                <header>
-                    <button name="action_assign_equipment" string="Asignar y Entregar Equipos" type="object" class="btn-primary" invisible="state == 'entregado_tecnico'"/>
-                    <field name="state" widget="statusbar" statusbar_visible="pendiente_asig,equipos_asignados,entregado_tecnico"/>
-                </header>
-                <sheet>
-                    <div class="oe_title">
-                        <h1><field name="name" readonly="1"/></h1>
-                    </div>
-                    <group>
-                        <group string="Referencia Comercial">
-                            <field name="backoffice_id"/>
-                            <field name="client_name"/>
-                            <field name="district"/>
-                            <field name="installation_address"/>
+        <!-- Vista Form para Almacén -->
+        <record id="view_teloconnect_almacen_form" model="ir.ui.view">
+            <field name="name">teloconnect.almacen.form</field>
+            <field name="model">teloconnect.almacen</field>
+            <field name="arch" type="xml">
+                <form string="Despacho de Almacén">
+                    <header>
+                        <button name="action_assign_equipment" string="Asignar y Entregar Equipos" type="object" class="btn-primary" invisible="state == 'entregado_tecnico'"/>
+                        <field name="state" widget="statusbar" statusbar_visible="pendiente_asig,equipos_asignados,entregado_tecnico"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1><field name="name" readonly="1"/></h1>
+                        </div>
+                        <group>
+                            <group string="Referencia Comercial">
+                                <field name="backoffice_id"/>
+                                <field name="client_name"/>
+                                <field name="district"/>
+                                <field name="installation_address"/>
+                            </group>
+                            <group string="Logística y Cuadrilla">
+                                <field name="technician_id"/>
+                                <field name="dispatch_date"/>
+                                <field name="ont_qty_required"/>
+                                <field name="deco_qty_required"/>
+                                <field name="repeater_qty_required"/>
+                            </group>
                         </group>
-                        <group string="Logística y Cuadrilla">
-                            <field name="technician_id"/>
-                            <field name="dispatch_date"/>
-                            <field name="ont_qty_required"/>
-                            <field name="deco_qty_required"/>
-                            <field name="repeater_qty_required"/>
+                        <group string="Control de Activos Fijos (Trazabilidad)">
+                            <field name="ont_series" placeholder="Ingrese series de Routers ONT separadas por comas..."/>
+                            <field name="deco_series" placeholder="Ingrese series de Decodificadores separadas por comas..."/>
+                            <field name="repeater_series" placeholder="Ingrese series de Repetidores separadas por comas..."/>
                         </group>
-                    </group>
-                    <group string="Control de Activos Fijos (Trazabilidad)">
-                        <field name="ont_series" placeholder="Ingrese series de Routers ONT separadas por comas..."/>
-                        <field name="deco_series" placeholder="Ingrese series de Decodificadores separadas por comas..."/>
-                        <field name="repeater_series" placeholder="Ingrese series de Repetidores separadas por comas..."/>
-                    </group>
-                </sheet>
-            </form>
-        </field>
-    </record>
+                    </sheet>
+                </form>
+            </field>
+        </record>
 
-    <!-- Acción de Ventana -->
-    <record id="action_teloconnect_almacen" model="ir.actions.act_window">
-        <field name="name">Gestión de Almacén</field>
-        <field name="res_model">teloconnect.almacen</field>
-        <field name="view_mode">list,form</field>
-    </record>
+        <!-- Acción de Ventana para Almacén -->
+        <record id="action_teloconnect_almacen" model="ir.actions.act_window">
+            <field name="name">Gestión de Almacén</field>
+            <field name="res_model">teloconnect.almacen</field>
+            <field name="view_mode">list,form</field>
+        </record>
 
-    <!-- Menú Raíz y Submenús Unificados -->
-    <menuitem id="menu_teloconnect_root"
-          name="TeloConnect ERP"
-          sequence="10"/>
-
-    <menuitem id="menu_teloconnect_almacen"
-          name="Gestión de Almacén"
-          parent="menu_teloconnect_root"
-          action="action_teloconnect_almacen"
-          sequence="20"/>
+        <!-- Menú de Almacén (Colgado del menú raíz principal) -->
+        <menuitem id="menu_teloconnect_almacen" 
+                  name="Almacén" 
+                  parent="menu_teloconnect_root" 
+                  action="action_teloconnect_almacen" 
+                  sequence="10"/>
+    </data>
 </odoo>

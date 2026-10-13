@@ -4,9 +4,10 @@ from odoo.exceptions import ValidationError
 
 class TeloConnectBackOffice(models.Model):
     _name = 'teloconnect.backoffice'
-    _description = 'Orden de Back Office'
+    _description = 'Órdenes de Back Office'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'id desc'
+    _rec_name = 'name'
 
     name = fields.Char(
         string='Orden de Back Office', 
@@ -49,7 +50,7 @@ class TeloConnectBackOffice(models.Model):
     scheduled_install_date = fields.Date(string='Fecha Programada Instalación')
     actual_install_date = fields.Date(string='Fecha Real Instalación')
     
-    # --- Estados Comerciales y Validación (Alineados con vistas XML) ---
+    # --- Estados Comerciales y Validación ---
     state = fields.Selection([
         ('draft', 'Borrador'),
         ('validation', 'En Validación BO'),
@@ -80,12 +81,24 @@ class TeloConnectBackOffice(models.Model):
             if rec.client_dni and (not rec.client_dni.isdigit() or len(rec.client_dni) != 8):
                 raise ValidationError("El DNI del cliente debe contener exactamente 8 dígitos numéricos.")
 
+    @api.constrains('latitude', 'longitude')
+    def _check_coordinates_range(self):
+        for rec in self:
+            if rec.latitude and (rec.latitude < -90.0 or rec.latitude > 90.0):
+                raise ValidationError('La latitud debe estar dentro del rango [-90.0, 90.0].')
+            if rec.longitude and (rec.longitude < -180.0 or rec.longitude > 180.0):
+                raise ValidationError('La longitud debe estar dentro del rango [-180.0, 180.0].')
+
     def action_validate(self):
         for rec in self:
             rec.state = 'validation'
 
     def action_approve(self):
         for rec in self:
+            # Validar que las coordenadas GPS estén presentes y sean válidas (no 0.0 o vacías)
+            if not rec.latitude or not rec.longitude or (rec.latitude == 0.0 and rec.longitude == 0.0):
+                raise ValidationError("No se puede aprobar la orden sin validar las coordenadas GPS y el checklist.")
+            
             rec.state = 'approved'
             self.env['teloconnect.almacen'].create({
                 'backoffice_id': rec.id,

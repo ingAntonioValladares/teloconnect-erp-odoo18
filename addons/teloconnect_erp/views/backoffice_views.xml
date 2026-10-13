@@ -15,6 +15,7 @@
         <!-- Menú Principal Raíz -->
         <menuitem id="menu_teloconnect_root" 
                   name="TeloConnect ERP" 
+                  web_icon="teloconnect_erp,static/description/icon.png"
                   sequence="10"/>
 
         <!-- Vista Formulario para Back Office -->
@@ -39,8 +40,14 @@
                         <group>
                             <group string="Datos del Cliente">
                                 <field name="client_name"/>
-                                <field name="installation_address"/>
+                                <field name="client_dni"/>
+                                <field name="client_phone"/>
+                                <field name="client_age"/>
+                                <field name="province"/>
                                 <field name="district"/>
+                                <field name="installation_address"/>
+                                <field name="latitude"/>
+                                <field name="longitude"/>
                             </group>
                             <group string="Equipos Requeridos &amp; Auditoría">
                                 <field name="deco_qty"/>
@@ -81,7 +88,7 @@
                   name="Back Office" 
                   parent="menu_teloconnect_root" 
                   action="action_teloconnect_backoffice" 
-                  sequence="5"/>
+                  sequence="10"/>
 
     </data>
 </odoo>
