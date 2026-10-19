@@ -1,3 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_teloconnect_backoffice,access_teloconnect_backoffice,model_teloconnect_backoffice,base.group_user,1,1,1,1
 access_teloconnect_almacen,access_teloconnect_almacen,model_teloconnect_almacen,base.group_user,1,1,1,1
+access_teloconnect_backoffice_event,access_teloconnect_backoffice_event,model_teloconnect_backoffice_event,base.group_user,1,0,0,0

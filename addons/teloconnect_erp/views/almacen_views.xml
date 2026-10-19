@@ -48,9 +48,9 @@
                             </group>
                         </group>
                         <group string="Control de Activos Fijos (Trazabilidad)">
-                            <field name="ont_series" placeholder="Ingrese series de Routers ONT separadas por comas..."/>
-                            <field name="deco_series" placeholder="Ingrese series de Decodificadores separadas por comas..."/>
-                            <field name="repeater_series" placeholder="Ingrese series de Repetidores separadas por comas..."/>
+                            <field name="ont_series" placeholder="Ejemplo: ONT-001. Una por equipo; separe con comas o saltos de línea."/>
+                            <field name="deco_series" placeholder="Ejemplo: DEC-001. Una por equipo; separe con comas o saltos de línea."/>
+                            <field name="repeater_series" placeholder="Ejemplo: REP-001. Una por equipo; separe con comas o saltos de línea."/>
                         </group>
                     </sheet>
                 </form>

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import re
+
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
@@ -67,19 +69,119 @@ class TeloConnectBackOffice(models.Model):
         ('direccion_erronea', 'Dirección Incorrecta / Incompleta'),
         ('contacto_invalido', 'Teléfono de Contacto Erróneo')
     ], string='Motivo de Rechazo', tracking=True)
+    dispatch_ids = fields.One2many(
+        'teloconnect.almacen', 'backoffice_id', string='Despachos de Almacén'
+    )
+    history_event_ids = fields.One2many(
+        'teloconnect.backoffice.event', 'backoffice_id', string='Historial de la Orden'
+    )
+    warehouse_delivered = fields.Boolean(compute='_compute_warehouse_delivered')
+
+    _history_tracked_fields = {
+        'client_name', 'client_dni', 'client_age', 'client_phone', 'department',
+        'province', 'district', 'installation_address', 'latitude', 'longitude',
+        'ont_qty', 'deco_qty', 'repeater_qty', 'rejection_reason',
+    }
+
+    @api.depends('dispatch_ids.state')
+    def _compute_warehouse_delivered(self):
+        for rec in self:
+            rec.warehouse_delivered = any(
+                dispatch.state == 'entregado_tecnico' for dispatch in rec.dispatch_ids
+            )
+
+    def _log_history_event(self, event_type, changed_fields=None, user_name=None):
+        self.ensure_one()
+        event_model = self.env['teloconnect.backoffice.event'].sudo()
+        dispatch = self.dispatch_ids.sorted('id')[:1]
+        event_label = dict(event_model._fields['event_type'].selection).get(
+            event_type, event_type
+        )
+        sequence = event_model.search_count([('backoffice_id', '=', self.id)]) + 1
+        labels = [
+            self._fields[field_name].string if field_name in self._fields else field_name
+            for field_name in (changed_fields or [])
+        ]
+        event_model.create({
+            'name': '%s - %03d - %s' % (self.name, sequence, event_label),
+            'backoffice_id': self.id,
+            'order_name': self.name,
+            'event_type': event_type,
+            'event_date': fields.Datetime.now(),
+            'user_name': user_name or self.env.user.display_name,
+            'commercial_state': self.state,
+            'warehouse_state': dispatch.state if dispatch else False,
+            'dispatch_name': dispatch.name if dispatch else False,
+            'technician_id': dispatch.technician_id if dispatch else False,
+            'dispatch_date': dispatch.dispatch_date if dispatch else False,
+            'rejection_reason': self.rejection_reason,
+            'changed_fields': ', '.join(labels),
+            'client_name': self.client_name,
+            'client_dni': self.client_dni,
+            'client_age': self.client_age,
+            'client_phone': self.client_phone,
+            'department': self.department,
+            'province': self.province,
+            'district': self.district,
+            'installation_address': self.installation_address,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
+            'ont_qty': self.ont_qty,
+            'deco_qty': self.deco_qty,
+            'repeater_qty': self.repeater_qty,
+            'ont_series': dispatch.ont_series if dispatch else False,
+            'deco_series': dispatch.deco_series if dispatch else False,
+            'repeater_series': dispatch.repeater_series if dispatch else False,
+        })
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            if not vals.get('client_dni'):
+                raise ValidationError("El DNI del cliente es obligatorio.")
             if vals.get('name', _('New')) == _('New') or vals.get('name', 'Nuevo') == 'Nuevo':
                 vals['name'] = self.env['ir.sequence'].next_by_code('teloconnect.backoffice') or 'BO/00001'
-        return super(TeloConnectBackOffice, self).create(vals_list)
+        records = super(TeloConnectBackOffice, self).create(vals_list)
+        for record, vals in zip(records, vals_list):
+            record._log_history_event('created', vals.keys())
+        return records
+
+    def write(self, vals):
+        if 'client_dni' in vals and not vals['client_dni']:
+            raise ValidationError("El DNI del cliente es obligatorio.")
+        watched_fields = self._history_tracked_fields.intersection(vals)
+        previous = {
+            record.id: {
+                field_name: record[field_name] for field_name in watched_fields
+            }
+            for record in self
+        }
+        previous_states = {record.id: record.state for record in self}
+        result = super(TeloConnectBackOffice, self).write(vals)
+        for record in self:
+            changed_fields = [
+                field_name for field_name, old_value in previous[record.id].items()
+                if old_value != record[field_name]
+            ]
+            if previous_states[record.id] != record.state:
+                record._log_history_event(
+                    'commercial_state', ['state'] + changed_fields
+                )
+            elif changed_fields:
+                record._log_history_event('data_update', changed_fields)
+        return result
 
     @api.constrains('client_dni')
     def _check_client_dni(self):
         for rec in self:
-            if rec.client_dni and (not rec.client_dni.isdigit() or len(rec.client_dni) != 8):
+            if rec.client_dni and not re.fullmatch(r'[0-9]{8}', rec.client_dni):
                 raise ValidationError("El DNI del cliente debe contener exactamente 8 dígitos numéricos.")
+
+    @api.constrains('state', 'rejection_reason')
+    def _check_rejection_reason(self):
+        for rec in self:
+            if rec.state == 'rejected' and not rec.rejection_reason:
+                raise ValidationError("Debe indicar el motivo de rechazo.")
 
     @api.constrains('latitude', 'longitude')
     def _check_coordinates_range(self):
@@ -95,15 +197,18 @@ class TeloConnectBackOffice(models.Model):
 
     def action_approve(self):
         for rec in self:
-            # Validar que las coordenadas GPS estén presentes y sean válidas (no 0.0 o vacías)
-            if not rec.latitude or not rec.longitude or (rec.latitude == 0.0 and rec.longitude == 0.0):
+            if rec.latitude == 0.0 or rec.longitude == 0.0:
                 raise ValidationError("No se puede aprobar la orden sin validar las coordenadas GPS y el checklist.")
             
-            rec.state = 'approved'
-            self.env['teloconnect.almacen'].create({
-                'backoffice_id': rec.id,
-                'technician_id': 'Cuadrilla por Asignar',
-            })
+            dispatch = self.env['teloconnect.almacen'].search(
+                [('backoffice_id', '=', rec.id)], limit=1
+            )
+            if not dispatch:
+                self.env['teloconnect.almacen'].create({
+                    'backoffice_id': rec.id,
+                    'technician_id': 'Cuadrilla por Asignar',
+                })
+            rec.write({'state': 'approved', 'rejection_reason': False})
 
     def action_return_correction(self):
         for rec in self:
@@ -111,8 +216,20 @@ class TeloConnectBackOffice(models.Model):
 
     def action_reject(self):
         for rec in self:
+            if rec.state != 'validation':
+                raise ValidationError("La orden debe estar en validación antes de rechazarla.")
+            if not rec.rejection_reason:
+                raise ValidationError("Debe indicar el motivo de rechazo.")
             rec.state = 'rejected'
 
     def action_draft(self):
         for rec in self:
-            rec.state = 'draft'
+            rec.write({'state': 'draft', 'rejection_reason': False})
+
+    def action_mark_installed(self):
+        for rec in self:
+            if rec.state != 'approved' or not rec.warehouse_delivered:
+                raise ValidationError(
+                    "Primero debe completar y entregar los equipos desde el módulo Almacén."
+                )
+            rec.write({'state': 'installed'})

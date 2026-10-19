@@ -25,11 +25,13 @@
             <field name="arch" type="xml">
                 <form string="Orden de Back Office">
                     <header>
-                        <button name="action_validate" string="Enviar a Validación" type="object" class="btn-primary" invisible="state != 'draft'"/>
-                        <button name="action_approve" string="Aprobar Orden" type="object" class="btn-success" invisible="state not in ('draft', 'validation')"/>
-                        <button name="action_reject" string="Rechazar" type="object" class="btn-danger" invisible="state not in ('draft', 'validation')"/>
+                        <button name="action_validate" string="Enviar a Validación" type="object" class="btn-primary" invisible="state not in ('draft', 'en_correcion')"/>
+                        <button name="action_approve" string="Aprobar Orden" type="object" class="btn-success" invisible="state != 'validation'"/>
+                        <button name="action_return_correction" string="Devolver para Corrección" type="object" invisible="state != 'validation'"/>
+                        <button name="action_reject" string="Rechazar" type="object" class="btn-danger" invisible="state != 'validation'"/>
                         <button name="action_draft" string="Volver a Borrador" type="object" invisible="state != 'rejected'"/>
-                        <field name="state" widget="statusbar" statusbar_visible="draft,validation,approved,rejected"/>
+                        <button name="action_mark_installed" string="Marcar como Instalado" type="object" class="btn-primary" invisible="state != 'approved' or not warehouse_delivered"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,validation,en_correcion,approved,installed,rejected"/>
                     </header>
                     <sheet>
                         <div class="oe_title">
@@ -37,10 +39,11 @@
                                 <field name="name"/>
                             </h1>
                         </div>
+                        <field name="warehouse_delivered" invisible="1"/>
                         <group>
                             <group string="Datos del Cliente">
                                 <field name="client_name"/>
-                                <field name="client_dni"/>
+                                <field name="client_dni" required="1"/>
                                 <field name="client_phone"/>
                                 <field name="client_age"/>
                                 <field name="province"/>
@@ -50,9 +53,10 @@
                                 <field name="longitude"/>
                             </group>
                             <group string="Equipos Requeridos &amp; Auditoría">
+                                <field name="ont_qty"/>
                                 <field name="deco_qty"/>
                                 <field name="repeater_qty"/>
-                                <field name="rejection_reason" invisible="state != 'rejected'" required="state == 'rejected'"/>
+                                <field name="rejection_reason" invisible="state not in ('validation', 'rejected')" required="state == 'rejected'"/>
                             </group>
                         </group>
                     </sheet>
@@ -69,6 +73,7 @@
                     <field name="name"/>
                     <field name="client_name"/>
                     <field name="district"/>
+                    <field name="ont_qty"/>
                     <field name="deco_qty"/>
                     <field name="repeater_qty"/>
                     <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-warning="state == 'validation'" decoration-success="state == 'approved'" decoration-danger="state == 'rejected'"/>

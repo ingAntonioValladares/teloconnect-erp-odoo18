@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_teloconnect_backoffice_event_list" model="ir.ui.view">
+            <field name="name">teloconnect.backoffice.event.list</field>
+            <field name="model">teloconnect.backoffice.event</field>
+            <field name="arch" type="xml">
+                <list string="Historial Analítico de Órdenes" create="0" edit="0" delete="0">
+                    <field name="event_date"/>
+                    <field name="order_name"/>
+                    <field name="event_type"/>
+                    <field name="commercial_state"/>
+                    <field name="rejection_reason"/>
+                    <field name="warehouse_state"/>
+                    <field name="dispatch_name"/>
+                    <field name="technician_id"/>
+                    <field name="dispatch_date"/>
+                    <field name="changed_fields" optional="hide"/>
+                    <field name="client_name"/>
+                    <field name="client_dni" optional="hide"/>
+                    <field name="client_age" optional="hide"/>
+                    <field name="client_phone" optional="hide"/>
+                    <field name="department" optional="hide"/>
+                    <field name="province"/>
+                    <field name="district"/>
+                    <field name="installation_address" optional="hide"/>
+                    <field name="latitude" optional="hide"/>
+                    <field name="longitude" optional="hide"/>
+                    <field name="ont_qty"/>
+                    <field name="deco_qty"/>
+                    <field name="repeater_qty"/>
+                    <field name="ont_series" optional="hide"/>
+                    <field name="deco_series" optional="hide"/>
+                    <field name="repeater_series" optional="hide"/>
+                    <field name="user_name" optional="hide"/>
+                </list>
+            </field>
+        </record>
+        <record id="action_teloconnect_backoffice_event" model="ir.actions.act_window">
+            <field name="name">Historial Analítico</field>
+            <field name="res_model">teloconnect.backoffice.event</field>
+            <field name="view_mode">list</field>
+        </record>
+        <menuitem id="menu_teloconnect_backoffice_event"
+                  name="Historial Analítico"
+                  parent="menu_teloconnect_root"
+                  action="action_teloconnect_backoffice_event"
+                  sequence="30"/>
+    </data>
+</odoo>
