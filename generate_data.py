@@ -2,6 +2,7 @@
 import csv
 import random
 from datetime import datetime, timedelta
+from pathlib import Path
 
 # Fijar semilla para reproducibilidad
 random.seed(42)
@@ -63,8 +64,53 @@ def generar_direccion():
         sector = random.choice(URBANIZACIONES) if random.random() < 0.5 else random.choice(ASENTAMIENTOS)
         return f"{sector} Mz. {chr(random.randint(65, 77))} Lte. {random.randint(1, 30)}"
 
-START_DATE = datetime(2023, 1, 1)
-END_DATE = datetime(2025, 12, 31)
+def obtener_estado_existente(file_name, id_field, date_field):
+    path = Path(file_name)
+    max_id = 0
+    latest_date = None
+
+    if path.exists() and path.stat().st_size:
+        with path.open("r", newline="", encoding="utf-8-sig") as file:
+            for row in csv.DictReader(file):
+                max_id = max(max_id, int(row[id_field].split("/")[-1]))
+                record_date = datetime.strptime(row[date_field].split()[0], "%Y-%m-%d")
+                latest_date = max(latest_date, record_date) if latest_date else record_date
+
+    return max_id, latest_date
+
+
+def agregar_registros(file_name, rows):
+    path = Path(file_name)
+    write_header = not path.exists() or path.stat().st_size == 0
+    encoding = "utf-8-sig" if write_header else "utf-8"
+
+    with path.open("a", newline="", encoding=encoding) as file:
+        writer = csv.DictWriter(file, fieldnames=rows[0].keys())
+        if write_header:
+            writer.writeheader()
+        writer.writerows(rows)
+
+
+backoffice_file = "historial_backoffice_eventos_3years.csv"
+almacen_file = "almacen_despachos_3years.csv"
+last_order_id, latest_backoffice_date = obtener_estado_existente(
+    backoffice_file, "Orden", "Fecha_Registro"
+)
+last_dispatch_id, _ = obtener_estado_existente(
+    almacen_file, "Despacho", "Fecha_Despacho"
+)
+
+INITIAL_START_DATE = datetime(2023, 1, 1)
+START_DATE = (
+    latest_backoffice_date + timedelta(days=1)
+    if latest_backoffice_date
+    else INITIAL_START_DATE
+)
+END_DATE = datetime(2026, 10, 19)
+if START_DATE > END_DATE:
+    print(f"El dataset ya contiene registros hasta {END_DATE:%Y-%m-%d}; no hay nada que agregar.")
+    raise SystemExit(0)
+
 PERIOD_END = END_DATE + timedelta(days=1) - timedelta(seconds=1)
 
 sales_dates = [
@@ -94,11 +140,11 @@ random.shuffle(correction_recovery_outcomes)
 bo_events = []
 almacen_events = []
 
-order_counter = 1
-dispatch_counter = 1
+order_counter = last_order_id + 1
+dispatch_counter = last_dispatch_id + 1
 correction_counter = 0
 
-print("Procesando simulación histórica de 3 años (2023 - 2025) con soporte ONT y GPS...")
+print(f"Agregando registros del {START_DATE:%Y-%m-%d} al {END_DATE:%Y-%m-%d}...")
 
 for current_date, daily_sales in zip(sales_dates, daily_sales_schedule):
     for _ in range(daily_sales):
@@ -123,7 +169,7 @@ for current_date, daily_sales in zip(sales_dates, daily_sales_schedule):
         
         t_venta = current_date + timedelta(hours=random.randint(8, 18), minutes=random.randint(0, 59))
         t_bo_eval = min(t_venta + timedelta(hours=random.randint(1, 4)), PERIOD_END)
-        outcome = sale_outcomes[order_counter - 1]
+        outcome = sale_outcomes[order_counter - last_order_id - 1]
         
         if outcome == 'direct_approved':
             # 65% Aprobado Directo
@@ -223,16 +269,9 @@ for current_date, daily_sales in zip(sales_dates, daily_sales_schedule):
             
         order_counter += 1
 
-# Guardar archivos CSV en UTF-8 con BOM (utf-8-sig)
-with open("historial_backoffice_eventos_3years.csv", "w", newline="", encoding="utf-8-sig") as f:
-    writer = csv.DictWriter(f, fieldnames=bo_events[0].keys())
-    writer.writeheader()
-    writer.writerows(bo_events)
-
-with open("almacen_despachos_3years.csv", "w", newline="", encoding="utf-8-sig") as f:
-    writer = csv.DictWriter(f, fieldnames=almacen_events[0].keys())
-    writer.writeheader()
-    writer.writerows(almacen_events)
+# Agregar registros conservando el historial existente y su esquema.
+agregar_registros(backoffice_file, bo_events)
+agregar_registros(almacen_file, almacen_events)
 
 print("¡Dataset actualizado con éxito para analítica!")
 print(f" - Registros de Back Office: {len(bo_events)}")
