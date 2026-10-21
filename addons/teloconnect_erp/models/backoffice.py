@@ -51,6 +51,25 @@ class TeloConnectBackOffice(models.Model):
     sale_date = fields.Datetime(string='Fecha de Venta', default=fields.Datetime.now, required=True)
     scheduled_install_date = fields.Date(string='Fecha Programada Instalación')
     actual_install_date = fields.Date(string='Fecha Real Instalación')
+    installation_result = fields.Selection([
+        ('installed', 'Instalación realizada'),
+        ('not_installed', 'Instalación no realizada'),
+        ('rescheduled', 'Visita reprogramada'),
+    ], string='Resultado de Instalación', tracking=True)
+    installation_category_id = fields.Many2one(
+        'teloconnect.installation.outcome.category',
+        string='Categoría del Resultado',
+        tracking=True,
+        ondelete='restrict',
+    )
+    installation_note = fields.Text(
+        string='Observación de Back Office', tracking=True
+    )
+    rescheduled_install_date = fields.Date(
+        string='Fecha Reprogramada por el Técnico',
+        tracking=True,
+        help='Ingrese la fecha informada por el técnico; no hay sincronización automática con el sistema externo.',
+    )
     
     # --- Estados Comerciales y Validación ---
     state = fields.Selection([
@@ -58,6 +77,8 @@ class TeloConnectBackOffice(models.Model):
         ('validation', 'En Validación BO'),
         ('en_correcion', 'Devuelto para Corrección'),
         ('approved', 'Aprobado / Pendiente Instalación'),
+        ('rescheduled', 'Visita Reprogramada'),
+        ('not_installed', 'Instalación No Realizada'),
         ('installed', 'Instalado Exitosamente'),
         ('rejected', 'Rechazado por BO')
     ], string='Estado Comercial', default='draft', required=True, tracking=True)
@@ -81,6 +102,9 @@ class TeloConnectBackOffice(models.Model):
         'client_name', 'client_dni', 'client_age', 'client_phone', 'department',
         'province', 'district', 'installation_address', 'latitude', 'longitude',
         'ont_qty', 'deco_qty', 'repeater_qty', 'rejection_reason',
+        'actual_install_date',
+        'installation_result', 'installation_category_id', 'installation_note',
+        'rescheduled_install_date',
     }
 
     @api.depends('dispatch_ids.state')
@@ -115,6 +139,11 @@ class TeloConnectBackOffice(models.Model):
             'technician_id': dispatch.technician_id if dispatch else False,
             'dispatch_date': dispatch.dispatch_date if dispatch else False,
             'rejection_reason': self.rejection_reason,
+            'actual_install_date': self.actual_install_date,
+            'installation_result': self.installation_result,
+            'installation_category': self.installation_category_id.name,
+            'installation_note': self.installation_note,
+            'rescheduled_install_date': self.rescheduled_install_date,
             'changed_fields': ', '.join(labels),
             'client_name': self.client_name,
             'client_dni': self.client_dni,
@@ -183,6 +212,48 @@ class TeloConnectBackOffice(models.Model):
             if rec.state == 'rejected' and not rec.rejection_reason:
                 raise ValidationError("Debe indicar el motivo de rechazo.")
 
+    @api.constrains(
+        'state', 'installation_result', 'installation_category_id',
+        'installation_note', 'rescheduled_install_date', 'actual_install_date',
+    )
+    def _check_installation_result(self):
+        for rec in self:
+            if rec.state in ('rescheduled', 'not_installed') and not rec.installation_result:
+                raise ValidationError("Seleccione el resultado de la visita técnica.")
+            if rec.installation_result in ('rescheduled', 'not_installed'):
+                if not rec.installation_category_id or not rec.installation_note:
+                    raise ValidationError(
+                        "Indique una categoría y la observación de Back Office."
+                    )
+            if rec.installation_result == 'rescheduled' and not rec.rescheduled_install_date:
+                raise ValidationError(
+                    "Para reprogramar, indique la nueva fecha acordada con el cliente."
+                )
+            if (
+                rec.state == 'rescheduled'
+                and rec.installation_result not in ('rescheduled', 'installed')
+            ):
+                raise ValidationError(
+                    "El resultado debe corresponder a la visita reprogramada."
+                )
+            if (
+                rec.state == 'not_installed'
+                and rec.installation_result not in ('not_installed', 'installed')
+            ):
+                raise ValidationError(
+                    "El resultado debe corresponder a la instalación no realizada."
+                )
+            if rec.state == 'installed' and rec.installation_result != 'installed':
+                raise ValidationError(
+                    "El resultado debe indicar que la instalación se realizó."
+                )
+            if rec.installation_result == 'installed' and rec.state not in (
+                'approved', 'rescheduled', 'not_installed', 'installed'
+            ):
+                raise ValidationError(
+                    "No se puede registrar una instalación realizada en este estado."
+                )
+
     @api.constrains('latitude', 'longitude')
     def _check_coordinates_range(self):
         for rec in self:
@@ -228,8 +299,53 @@ class TeloConnectBackOffice(models.Model):
 
     def action_mark_installed(self):
         for rec in self:
-            if rec.state != 'approved' or not rec.warehouse_delivered:
+            if rec.state not in ('approved', 'rescheduled', 'not_installed') or not rec.warehouse_delivered:
                 raise ValidationError(
                     "Primero debe completar y entregar los equipos desde el módulo Almacén."
                 )
-            rec.write({'state': 'installed'})
+            rec.write({
+                'state': 'installed',
+                'installation_result': 'installed',
+                'actual_install_date': fields.Date.context_today(rec),
+                'installation_category_id': False,
+                'installation_note': False,
+                'rescheduled_install_date': False,
+            })
+
+    def action_register_installation_result(self):
+        for rec in self:
+            if rec.state not in ('approved', 'rescheduled', 'not_installed') or not rec.warehouse_delivered:
+                raise ValidationError(
+                    "Solo se puede registrar el resultado cuando la orden está pendiente "
+                    "de instalación y los equipos fueron entregados al técnico."
+                )
+            if not rec.installation_result:
+                raise ValidationError("Seleccione el resultado de la visita técnica.")
+            if rec.installation_result == 'installed':
+                rec.write({
+                    'state': 'installed',
+                    'actual_install_date': fields.Date.context_today(rec),
+                    'installation_category_id': False,
+                    'installation_note': False,
+                    'rescheduled_install_date': False,
+                })
+            elif rec.installation_result == 'rescheduled':
+                if not rec.installation_category_id or not rec.installation_note:
+                    raise ValidationError(
+                        "Indique una categoría y la observación de Back Office."
+                    )
+                if not rec.rescheduled_install_date:
+                    raise ValidationError(
+                        "Indique la nueva fecha acordada con el cliente."
+                    )
+                rec.write({'state': 'rescheduled', 'actual_install_date': False})
+            elif rec.installation_result == 'not_installed':
+                if not rec.installation_category_id or not rec.installation_note:
+                    raise ValidationError(
+                        "Indique una categoría y la observación de Back Office."
+                    )
+                rec.write({
+                    'state': 'not_installed',
+                    'actual_install_date': False,
+                    'rescheduled_install_date': False,
+                })

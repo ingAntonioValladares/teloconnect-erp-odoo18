@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from odoo import fields
 from odoo.tests.common import TransactionCase
 from odoo.exceptions import ValidationError
 
@@ -241,7 +242,8 @@ class TestBackOfficeValidation(TransactionCase):
         dispatch.action_assign_equipment()
         order.action_mark_installed()
         self.assertEqual(order.state, 'installed')
-        self.assertFalse(order.actual_install_date)
+        self.assertEqual(order.installation_result, 'installed')
+        self.assertEqual(order.actual_install_date, fields.Date.context_today(order))
 
     def test_12_full_order_lifecycle_is_logged_as_snapshots(self):
         order = self.BackOfficeModel.create({
@@ -291,9 +293,106 @@ class TestBackOfficeValidation(TransactionCase):
         )[-1]
         self.assertEqual(delivered_event.ont_series, 'ONT-HIST-001')
 
-    def test_13_history_excludes_crm_and_operator_owned_dates(self):
+    def test_13_history_tracks_actual_installation_but_excludes_external_dates(self):
         event_fields = self.env['teloconnect.backoffice.event']._fields
         for field_name in (
-            'advisor_id', 'sale_date', 'scheduled_install_date', 'actual_install_date'
+            'advisor_id', 'sale_date', 'scheduled_install_date'
         ):
             self.assertNotIn(field_name, event_fields)
+        self.assertIn('actual_install_date', event_fields)
+
+    def test_14_rescheduled_visit_records_date_category_and_note(self):
+        order = self.BackOfficeModel.create({
+            'client_name': 'Cliente Reprograma Visita',
+            'client_dni': '12345678',
+            'district': 'chiclayo',
+            'installation_address': 'Av. Grau 400',
+            'latitude': -6.77137,
+            'longitude': -79.84088,
+        })
+        order.action_approve()
+        dispatch = order.dispatch_ids
+        dispatch.write({'ont_series': 'ONT-RESCHEDULE-001'})
+        dispatch.action_assign_equipment()
+
+        category = self.env['teloconnect.installation.outcome.category'].search(
+            [('name', '=', 'Cliente sin disponibilidad de tiempo')], limit=1
+        )
+        new_date = fields.Date.add(fields.Date.context_today(order), days=3)
+        note = 'Cliente reagendó por disponibilidad de tiempo.'
+        order.write({
+            'installation_result': 'rescheduled',
+            'installation_category_id': category.id,
+            'installation_note': note,
+            'rescheduled_install_date': new_date,
+        })
+        order.action_register_installation_result()
+
+        self.assertEqual(order.state, 'rescheduled')
+        self.assertEqual(order.rescheduled_install_date, new_date)
+        latest_event = order.history_event_ids.sorted('id')[-1]
+        self.assertEqual(latest_event.installation_result, 'rescheduled')
+        self.assertEqual(latest_event.installation_category, category.name)
+        self.assertEqual(latest_event.installation_note, note)
+        self.assertEqual(latest_event.rescheduled_install_date, new_date)
+
+    def test_15_rescheduled_visit_can_be_marked_installed(self):
+        order = self.BackOfficeModel.create({
+            'client_name': 'Cliente Instala Antes de Reprogramar',
+            'client_dni': '12345678',
+            'district': 'chiclayo',
+            'installation_address': 'Av. Grau 450',
+            'latitude': -6.77137,
+            'longitude': -79.84088,
+        })
+        order.action_approve()
+        dispatch = order.dispatch_ids
+        dispatch.write({'ont_series': 'ONT-INSTALL-AFTER-RESCHEDULE-001'})
+        dispatch.action_assign_equipment()
+        category = self.env['teloconnect.installation.outcome.category'].search(
+            [('name', '=', 'Cliente sin disponibilidad de tiempo')], limit=1
+        )
+        order.write({
+            'installation_result': 'rescheduled',
+            'installation_category_id': category.id,
+            'installation_note': 'Cliente reagendó por disponibilidad de tiempo.',
+            'rescheduled_install_date': fields.Date.add(
+                fields.Date.context_today(order), days=3
+            ),
+        })
+        order.action_register_installation_result()
+
+        order.write({'installation_result': 'installed'})
+        order.action_register_installation_result()
+
+        self.assertEqual(order.state, 'installed')
+        self.assertEqual(order.installation_result, 'installed')
+        self.assertEqual(order.actual_install_date, fields.Date.context_today(order))
+        self.assertFalse(order.rescheduled_install_date)
+
+    def test_16_uncompleted_visit_requires_category_and_note(self):
+        order = self.BackOfficeModel.create({
+            'client_name': 'Cliente Sin Instalación',
+            'client_dni': '12345678',
+            'district': 'chiclayo',
+            'installation_address': 'Av. Grau 500',
+            'latitude': -6.77137,
+            'longitude': -79.84088,
+        })
+        order.action_approve()
+        dispatch = order.dispatch_ids
+        dispatch.write({'ont_series': 'ONT-NOT-INSTALLED-001'})
+        dispatch.action_assign_equipment()
+        with self.assertRaises(ValidationError):
+            order.write({'installation_result': 'not_installed'})
+
+        category = self.env['teloconnect.installation.outcome.category'].search(
+            [('name', '=', 'Cliente desistió de la instalación')], limit=1
+        )
+        order.write({
+            'installation_result': 'not_installed',
+            'installation_category_id': category.id,
+            'installation_note': 'El cliente decidió cancelar al recibir otra oferta.',
+        })
+        order.action_register_installation_result()
+        self.assertEqual(order.state, 'not_installed')

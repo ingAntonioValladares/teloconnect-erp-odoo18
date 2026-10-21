@@ -11,6 +11,11 @@
                     <field name="event_type"/>
                     <field name="commercial_state"/>
                     <field name="rejection_reason"/>
+                    <field name="installation_result"/>
+                    <field name="installation_category" optional="hide"/>
+                    <field name="installation_note" optional="hide"/>
+                    <field name="rescheduled_install_date"/>
+                    <field name="actual_install_date" optional="hide"/>
                     <field name="warehouse_state"/>
                     <field name="dispatch_name"/>
                     <field name="technician_id"/>

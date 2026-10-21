@@ -30,8 +30,8 @@
                         <button name="action_return_correction" string="Devolver para Corrección" type="object" invisible="state != 'validation'"/>
                         <button name="action_reject" string="Rechazar" type="object" class="btn-danger" invisible="state != 'validation'"/>
                         <button name="action_draft" string="Volver a Borrador" type="object" invisible="state != 'rejected'"/>
-                        <button name="action_mark_installed" string="Marcar como Instalado" type="object" class="btn-primary" invisible="state != 'approved' or not warehouse_delivered"/>
-                        <field name="state" widget="statusbar" statusbar_visible="draft,validation,en_correcion,approved,installed,rejected"/>
+                        <button name="action_register_installation_result" string="Guardar Resultado de Visita" type="object" class="btn-primary" invisible="state not in ('approved', 'rescheduled', 'not_installed') or not warehouse_delivered"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,validation,en_correcion,approved,rescheduled,not_installed,installed,rejected"/>
                     </header>
                     <sheet>
                         <div class="oe_title">
@@ -51,6 +51,21 @@
                                 <field name="installation_address"/>
                                 <field name="latitude"/>
                                 <field name="longitude"/>
+                            </group>
+                            <group string="Resultado de Visita Técnica" invisible="state not in ('approved', 'rescheduled', 'not_installed', 'installed')">
+                                <field name="installation_result" readonly="state == 'installed'"/>
+                                <field name="installation_category_id"
+                                       invisible="installation_result == 'installed'"
+                                       required="installation_result in ('not_installed', 'rescheduled')"
+                                       domain="[('active', '=', True)]"/>
+                                <field name="installation_note"
+                                       invisible="installation_result == 'installed'"
+                                       required="installation_result in ('not_installed', 'rescheduled')"
+                                       placeholder="Ej.: Cliente reagendó por disponibilidad de tiempo."/>
+                                <field name="rescheduled_install_date"
+                                       invisible="installation_result != 'rescheduled'"
+                                       required="installation_result == 'rescheduled'"/>
+                                <field name="actual_install_date" readonly="1" invisible="state != 'installed'"/>
                             </group>
                             <group string="Equipos Requeridos &amp; Auditoría">
                                 <field name="ont_qty"/>
@@ -76,7 +91,8 @@
                     <field name="ont_qty"/>
                     <field name="deco_qty"/>
                     <field name="repeater_qty"/>
-                    <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-warning="state == 'validation'" decoration-success="state == 'approved'" decoration-danger="state == 'rejected'"/>
+                    <field name="rescheduled_install_date" optional="show"/>
+                    <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-warning="state in ('validation', 'approved', 'rescheduled')" decoration-success="state == 'installed'" decoration-danger="state in ('rejected', 'not_installed')"/>
                 </list>
             </field>
         </record>

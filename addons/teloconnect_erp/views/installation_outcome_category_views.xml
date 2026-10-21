@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_teloconnect_installation_outcome_category_list" model="ir.ui.view">
+            <field name="name">teloconnect.installation.outcome.category.list</field>
+            <field name="model">teloconnect.installation.outcome.category</field>
+            <field name="arch" type="xml">
+                <list string="Categorías de Resultado de Instalación">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_teloconnect_installation_outcome_category_form" model="ir.ui.view">
+            <field name="name">teloconnect.installation.outcome.category.form</field>
+            <field name="model">teloconnect.installation.outcome.category</field>
+            <field name="arch" type="xml">
+                <form string="Categoría de Resultado de Instalación">
+                    <sheet>
+                        <group>
+                            <field name="name"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_teloconnect_installation_outcome_category" model="ir.actions.act_window">
+            <field name="name">Categorías de Resultado</field>
+            <field name="res_model">teloconnect.installation.outcome.category</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <menuitem id="menu_teloconnect_installation_outcome_category"
+                  name="Categorías de Resultado"
+                  parent="menu_teloconnect_root"
+                  action="action_teloconnect_installation_outcome_category"
+                  sequence="40"/>
+    </data>
+</odoo>
