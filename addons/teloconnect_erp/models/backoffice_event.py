@@ -31,6 +31,8 @@ class TeloConnectBackOfficeEvent(models.Model):
         ('validation', 'En Validación BO'),
         ('en_correcion', 'Devuelto para Corrección'),
         ('approved', 'Aprobado / Pendiente Instalación'),
+        ('rescheduled', 'Visita Reprogramada'),
+        ('not_installed', 'Instalación No Realizada'),
         ('installed', 'Instalado Exitosamente'),
         ('rejected', 'Rechazado por BO'),
     ], string='Estado Comercial', readonly=True, index=True)
@@ -41,6 +43,23 @@ class TeloConnectBackOfficeEvent(models.Model):
         ('direccion_erronea', 'Dirección Incorrecta / Incompleta'),
         ('contacto_invalido', 'Teléfono de Contacto Erróneo'),
     ], string='Motivo de Rechazo', readonly=True)
+    installation_result = fields.Selection([
+        ('installed', 'Instalación realizada'),
+        ('not_installed', 'Instalación no realizada'),
+        ('rescheduled', 'Visita reprogramada'),
+    ], string='Resultado de Instalación', readonly=True)
+    installation_category = fields.Char(
+        string='Categoría del Resultado', readonly=True
+    )
+    installation_note = fields.Text(
+        string='Observación de Back Office', readonly=True
+    )
+    rescheduled_install_date = fields.Date(
+        string='Fecha Reprogramada', readonly=True
+    )
+    actual_install_date = fields.Date(
+        string='Fecha Real de Instalación', readonly=True
+    )
     warehouse_state = fields.Selection([
         ('pendiente_asig', 'Pendiente Asignación'),
         ('equipos_asignados', 'Equipos Asignados'),
