@@ -4,23 +4,24 @@ services:
     depends_on:
       - db
     ports:
-      - "8069:8069"
+      - "127.0.0.1:8069:8069"
     volumes:
       - ./addons:/mnt/extra-addons
       - ./odoo.conf:/etc/odoo/odoo.conf
       - odoo-web-data:/var/lib/odoo
     environment:
-      - HOST=db
-      - USER=odoo
-      - PASSWORD=odoo
+      HOST: db
+      PORT: 5432
+      USER: ${POSTGRES_USER:?Define POSTGRES_USER en .env}
+      PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
     command: odoo --config=/etc/odoo/odoo.conf
 
   db:
     image: postgres:15
     environment:
-      - POSTGRES_DB=postgres
-      - POSTGRES_PASSWORD=odoo
-      - POSTGRES_USER=odoo
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Define POSTGRES_USER en .env}
     volumes:
       - odoo-db-data:/var/lib/postgresql/data
 

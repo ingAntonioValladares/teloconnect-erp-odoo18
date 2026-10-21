@@ -1,0 +1,7 @@
+[options]
+addons_path = /mnt/extra-addons
+admin_passwd = REPLACE_WITH_A_LOCAL_MASTER_PASSWORD
+db_host = db
+db_port = 5432
+db_user = odoo
+db_password = REPLACE_WITH_THE_POSTGRES_PASSWORD_FROM_DOTENV
