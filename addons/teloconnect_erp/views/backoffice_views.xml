@@ -13,8 +13,8 @@
         </record>
 
         <!-- Menú Principal Raíz -->
-        <menuitem id="menu_teloconnect_root" 
-                  name="TeloConnect ERP" 
+        <menuitem id="menu_teloconnect_root"
+                  name="TeloConnect ERP"
                   web_icon="teloconnect_erp,static/description/icon.png"
                   sequence="10"/>
 
@@ -25,55 +25,148 @@
             <field name="arch" type="xml">
                 <form string="Orden de Back Office">
                     <header>
-                        <button name="action_validate" string="Enviar a Validación" type="object" class="btn-primary" invisible="state not in ('draft', 'en_correcion')"/>
-                        <button name="action_approve" string="Aprobar Orden" type="object" class="btn-success" invisible="state != 'validation'"/>
-                        <button name="action_return_correction" string="Devolver para Corrección" type="object" invisible="state != 'validation'"/>
-                        <button name="action_reject" string="Rechazar" type="object" class="btn-danger" invisible="state != 'validation'"/>
-                        <button name="action_draft" string="Volver a Borrador" type="object" invisible="state != 'rejected'"/>
-                        <button name="action_register_installation_result" string="Guardar Resultado de Visita" type="object" class="btn-primary" invisible="state not in ('approved', 'rescheduled', 'not_installed') or not warehouse_delivered"/>
+                        <button name="action_validate" string="Enviar a Validación" type="object" class="btn-primary" icon="fa-paper-plane" invisible="state not in ('draft', 'en_correcion')"/>
+                        <button name="action_approve" string="Aprobar Orden" type="object" class="btn-success fw-bold" icon="fa-check" invisible="state != 'validation'"/>
+                        <button name="action_return_correction" string="Devolver para Corrección" type="object" class="btn-warning text-dark" icon="fa-undo" invisible="state != 'validation'"/>
+                        <button name="action_reject" string="Rechazar" type="object" class="btn-outline-danger" icon="fa-ban" invisible="state != 'validation'"/>
+                        <button name="action_draft" string="Volver a Borrador" type="object" class="btn-secondary" icon="fa-rotate-left" invisible="state != 'rejected'"/>
+                        <button name="action_register_installation_result" string="Guardar Resultado de Visita" type="object" class="btn-primary" icon="fa-save" invisible="state not in ('approved', 'rescheduled', 'not_installed') or not warehouse_delivered"/>
                         <field name="state" widget="statusbar" statusbar_visible="draft,validation,en_correcion,approved,rescheduled,not_installed,installed,rejected"/>
                     </header>
                     <sheet>
+                        <!-- Campo invisible requerido para lógica de botón -->
+                        <field name="warehouse_delivered" invisible="1"/>
+
+                        <!-- Encabezado con número de orden -->
                         <div class="oe_title">
+                            <label for="name" class="o_form_label" string="N° Orden Comercial"/>
                             <h1>
-                                <field name="name"/>
+                                <field name="name" readonly="1"/>
                             </h1>
                         </div>
-                        <field name="warehouse_delivered" invisible="1"/>
-                        <group>
-                            <group string="Datos del Cliente">
-                                <field name="client_name"/>
-                                <field name="client_dni" required="1"/>
-                                <field name="client_phone"/>
-                                <field name="client_age"/>
-                                <field name="province"/>
-                                <field name="district"/>
-                                <field name="installation_address"/>
-                                <field name="latitude"/>
-                                <field name="longitude"/>
-                            </group>
-                            <group string="Resultado de Visita Técnica" invisible="state not in ('approved', 'rescheduled', 'not_installed', 'installed')">
-                                <field name="installation_result" readonly="state == 'installed'"/>
-                                <field name="installation_category_id"
-                                       invisible="installation_result == 'installed'"
-                                       required="installation_result in ('not_installed', 'rescheduled')"
-                                       domain="[('active', '=', True)]"/>
-                                <field name="installation_note"
-                                       invisible="installation_result == 'installed'"
-                                       required="installation_result in ('not_installed', 'rescheduled')"
-                                       placeholder="Ej.: Cliente reagendó por disponibilidad de tiempo."/>
-                                <field name="rescheduled_install_date"
-                                       invisible="installation_result != 'rescheduled'"
-                                       required="installation_result == 'rescheduled'"/>
-                                <field name="actual_install_date" readonly="1" invisible="state != 'installed'"/>
-                            </group>
-                            <group string="Equipos Requeridos &amp; Auditoría">
-                                <field name="ont_qty"/>
-                                <field name="deco_qty"/>
-                                <field name="repeater_qty"/>
-                                <field name="rejection_reason" invisible="state not in ('validation', 'rejected')" required="state == 'rejected'"/>
-                            </group>
-                        </group>
+
+                        <notebook>
+                            <!-- ══════════════════════════════════════════
+                                 PESTAÑA 1: Información del Cliente
+                            ══════════════════════════════════════════ -->
+                            <page string="Cliente &amp; Contacto" name="page_cliente">
+                                <group>
+                                    <group string="Datos del Titular" col="2">
+                                        <field name="client_dni" widget="dni_search" required="1" placeholder="8 dígitos"/>
+                                        <field name="client_name" placeholder="Nombre completo del cliente"/>
+                                        <field name="client_phone" placeholder="+51 9XX XXX XXX"/>
+                                        <field name="client_age" placeholder="Edad"/>
+                                    </group>
+                                    <group string="Gestión Comercial &amp; Venta" col="2">
+                                        <field name="advisor_id" string="Asesor Comercial" placeholder="Asesor que originó la venta"/>
+                                        <field name="sale_date" string="Fecha de Registro" readonly="1"/>
+                                        <field name="scheduled_install_date" string="Fecha Programada Instalación"/>
+                                    </group>
+                                </group>
+                            </page>
+
+                            <!-- ══════════════════════════════════════════
+                                 PESTAÑA 2: Dirección & Mapa de Instalación (Delivery)
+                            ══════════════════════════════════════════ -->
+                            <page string="Dirección &amp; Mapa de Instalación" name="page_instalacion">
+                                <group>
+                                    <group string="Zona de Cobertura" col="2">
+                                        <field name="department" readonly="1" string="Departamento"/>
+                                        <field name="province"/>
+                                        <field name="district_chiclayo" string="Distrito" invisible="province != 'chiclayo'" required="province == 'chiclayo'"/>
+                                        <field name="district_lambayeque" string="Distrito" invisible="province != 'lambayeque'" required="province == 'lambayeque'"/>
+                                        <field name="district_ferrenafe" string="Distrito" invisible="province != 'ferrenafe'" required="province == 'ferrenafe'"/>
+                                        <field name="district" invisible="1"/>
+                                    </group>
+                                    <group string="Dirección Completa de Entrega" col="2">
+                                        <field name="installation_address" placeholder="Ej: Av. Balta 123, Urb. Los Parques (o mueve el puntero en el mapa para autollenar)"/>
+                                    </group>
+                                </group>
+
+                                <!-- Georreferenciación GPS y Mapa Interactivo -->
+                                <separator string="Georreferenciación GPS &amp; Mapa Interactivo"/>
+                                <group col="4">
+                                    <field name="latitude" string="Latitud"/>
+                                    <field name="longitude" string="Longitud"/>
+                                </group>
+                                <field name="map_widget" widget="map_picker" nolabel="1"/>
+                            </page>
+
+                            <!-- ══════════════════════════════════════════
+                                 PESTAÑA 3: Equipos Requeridos & Auditoría
+                            ══════════════════════════════════════════ -->
+                            <page string="Equipos &amp; Auditoría" name="page_equipos">
+                                <group>
+                                    <group string="Equipos Solicitados (Triple Play)" col="2">
+                                        <field name="ont_qty" string="Routers ONT"/>
+                                        <field name="deco_qty" string="Decodificadores"/>
+                                        <field name="repeater_qty" string="Repetidores Wi-Fi"/>
+                                    </group>
+                                    <group string="Control de Validación" col="2">
+                                        <div class="alert alert-warning mb-2" role="alert" invisible="state != 'en_correcion'" colspan="2">
+                                            <i class="fa fa-exclamation-triangle me-1" title="Alerta"/>
+                                            <strong>Orden Devuelta para Corrección:</strong> Revise el motivo indicado abajo y subsane las observaciones antes de volver a enviar a validación.
+                                        </div>
+                                        <div class="alert alert-danger mb-2" role="alert" invisible="state != 'rejected'" colspan="2">
+                                            <i class="fa fa-ban me-1" title="Rechazado"/>
+                                            <strong>Orden Rechazada:</strong> Esta orden ha sido rechazada por el motivo indicado abajo.
+                                        </div>
+                                        <field name="rejection_reason"
+                                               string="Motivo de Devolución / Rechazo"
+                                               invisible="state not in ('validation', 'en_correcion', 'rejected')"
+                                               readonly="state in ('en_correcion', 'rejected')"
+                                               required="state == 'rejected'"
+                                               placeholder="Seleccione motivo de devolución o rechazo"/>
+                                    </group>
+                                </group>
+                            </page>
+
+                            <!-- ══════════════════════════════════════════
+                                 PESTAÑA 4: Resultado de Visita Técnica
+                                 (visible solo en estados relevantes)
+                            ══════════════════════════════════════════ -->
+                            <page string="Resultado de Visita" name="page_visita"
+                                  invisible="state not in ('approved', 'rescheduled', 'not_installed', 'installed')">
+                                <div class="alert alert-warning mb-3 d-flex align-items-center gap-3" role="alert" invisible="warehouse_delivered">
+                                    <i class="fa fa-truck fa-2x text-warning" title="Almacén"/>
+                                    <div>
+                                        <strong>Equipos pendientes de entrega en Almacén:</strong><br/>
+                                        Esta sección se habilitará para registrar el resultado técnico una vez que el área de Almacén asigne y entregue los equipos al técnico desde el módulo de <em>Gestión de Almacén</em>.
+                                    </div>
+                                </div>
+                                <div class="alert alert-success mb-3 d-flex align-items-center gap-3" role="status" invisible="not warehouse_delivered or state == 'installed'">
+                                    <i class="fa fa-check-circle fa-2x text-success" title="Listo"/>
+                                    <div>
+                                        <strong>Equipos entregados al técnico:</strong><br/>
+                                        Los equipos ya fueron despachados. Puede proceder a registrar el resultado de la visita técnica de instalación.
+                                    </div>
+                                </div>
+                                <group>
+                                    <group string="Resultado de la Visita Técnica" col="2">
+                                        <field name="installation_result" readonly="not warehouse_delivered or state == 'installed'"/>
+                                        <field name="installation_category_id"
+                                               readonly="not warehouse_delivered"
+                                               invisible="installation_result == 'installed'"
+                                               required="installation_result in ('not_installed', 'rescheduled')"
+                                               domain="[('active', '=', True)]"/>
+                                        <field name="rescheduled_install_date"
+                                               readonly="not warehouse_delivered"
+                                               invisible="installation_result != 'rescheduled'"
+                                               required="installation_result == 'rescheduled'"/>
+                                        <field name="actual_install_date" readonly="1" invisible="state != 'installed'"/>
+                                    </group>
+                                    <group string="Observaciones" col="2"
+                                           invisible="installation_result == 'installed'">
+                                        <field name="installation_note"
+                                               readonly="not warehouse_delivered"
+                                               invisible="installation_result == 'installed'"
+                                               required="installation_result in ('not_installed', 'rescheduled')"
+                                               placeholder="Ej.: Cliente reagendó por disponibilidad de tiempo."
+                                               nolabel="1"/>
+                                    </group>
+                                </group>
+                            </page>
+                        </notebook>
                     </sheet>
                 </form>
             </field>
@@ -84,15 +177,20 @@
             <field name="name">teloconnect.backoffice.list</field>
             <field name="model">teloconnect.backoffice</field>
             <field name="arch" type="xml">
-                <list string="Órdenes de Back Office">
-                    <field name="name"/>
-                    <field name="client_name"/>
-                    <field name="district"/>
-                    <field name="ont_qty"/>
-                    <field name="deco_qty"/>
-                    <field name="repeater_qty"/>
-                    <field name="rescheduled_install_date" optional="show"/>
-                    <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-warning="state in ('validation', 'approved', 'rescheduled')" decoration-success="state == 'installed'" decoration-danger="state in ('rejected', 'not_installed')"/>
+                <list string="Órdenes de Back Office" multi_edit="1">
+                    <field name="name" string="N° Orden"/>
+                    <field name="client_name" string="Cliente"/>
+                    <field name="district" string="Distrito"/>
+                    <field name="ont_qty" string="ONT" optional="show"/>
+                    <field name="deco_qty" string="Deco" optional="show"/>
+                    <field name="repeater_qty" string="Rep." optional="show"/>
+                    <field name="rescheduled_install_date" string="Reagendado" optional="show"/>
+                    <field name="state" widget="badge"
+                           decoration-info="state == 'draft'"
+                           decoration-warning="state in ('validation', 'en_correcion')"
+                           decoration-primary="state in ('approved', 'rescheduled')"
+                           decoration-success="state == 'installed'"
+                           decoration-danger="state in ('rejected', 'not_installed')"/>
                 </list>
             </field>
         </record>
@@ -105,10 +203,10 @@
         </record>
 
         <!-- Menú de Back Office -->
-        <menuitem id="menu_teloconnect_backoffice" 
-                  name="Back Office" 
-                  parent="menu_teloconnect_root" 
-                  action="action_teloconnect_backoffice" 
+        <menuitem id="menu_teloconnect_backoffice"
+                  name="Back Office"
+                  parent="menu_teloconnect_root"
+                  action="action_teloconnect_backoffice"
                   sequence="10"/>
 
     </data>

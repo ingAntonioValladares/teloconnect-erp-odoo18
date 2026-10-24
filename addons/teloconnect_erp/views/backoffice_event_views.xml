@@ -6,46 +6,69 @@
             <field name="model">teloconnect.backoffice.event</field>
             <field name="arch" type="xml">
                 <list string="Historial Analítico de Órdenes" create="0" edit="0" delete="0">
-                    <field name="event_date"/>
-                    <field name="order_name"/>
-                    <field name="event_type"/>
-                    <field name="commercial_state"/>
-                    <field name="rejection_reason"/>
-                    <field name="installation_result"/>
-                    <field name="installation_category" optional="hide"/>
-                    <field name="installation_note" optional="hide"/>
-                    <field name="rescheduled_install_date"/>
-                    <field name="actual_install_date" optional="hide"/>
-                    <field name="warehouse_state"/>
-                    <field name="dispatch_name"/>
-                    <field name="technician_id"/>
-                    <field name="dispatch_date"/>
-                    <field name="changed_fields" optional="hide"/>
-                    <field name="client_name"/>
-                    <field name="client_dni" optional="hide"/>
-                    <field name="client_age" optional="hide"/>
-                    <field name="client_phone" optional="hide"/>
-                    <field name="department" optional="hide"/>
-                    <field name="province"/>
-                    <field name="district"/>
-                    <field name="installation_address" optional="hide"/>
-                    <field name="latitude" optional="hide"/>
-                    <field name="longitude" optional="hide"/>
-                    <field name="ont_qty"/>
-                    <field name="deco_qty"/>
-                    <field name="repeater_qty"/>
-                    <field name="ont_series" optional="hide"/>
-                    <field name="deco_series" optional="hide"/>
-                    <field name="repeater_series" optional="hide"/>
-                    <field name="user_name" optional="hide"/>
+                    <!-- Temporalidad y referencia -->
+                    <field name="event_date" string="Fecha Evento"/>
+                    <field name="order_name" string="N° Orden"/>
+                    <field name="event_type" string="Tipo de Evento" widget="badge"
+                           decoration-info="event_type == 'created'"
+                           decoration-success="event_type in ('commercial_state', 'warehouse_state')"
+                           decoration-warning="event_type in ('data_update', 'warehouse_update', 'warehouse_created')"
+                           decoration-muted="event_type == 'baseline'"/>
+
+                    <!-- Estados comerciales -->
+                    <field name="commercial_state" string="Estado Comercial" widget="badge"
+                           decoration-info="commercial_state == 'draft'"
+                           decoration-warning="commercial_state in ('validation', 'en_correcion', 'approved', 'rescheduled')"
+                           decoration-success="commercial_state == 'installed'"
+                           decoration-danger="commercial_state in ('rejected', 'not_installed')"/>
+                    <field name="rejection_reason" string="Motivo Rechazo" optional="hide"/>
+                    <field name="installation_result" string="Resultado Instalación"/>
+                    <field name="installation_category" string="Categoría Resultado" optional="hide"/>
+                    <field name="installation_note" string="Nota Instalación" optional="hide"/>
+                    <field name="rescheduled_install_date" string="Fecha Reagendada"/>
+                    <field name="actual_install_date" string="Fecha Real Instalación" optional="hide"/>
+
+                    <!-- Almacén / Despacho -->
+                    <field name="warehouse_state" string="Estado Almacén" optional="hide"/>
+                    <field name="dispatch_name" string="N° Despacho"/>
+                    <field name="technician_id" string="Técnico"/>
+                    <field name="dispatch_date" string="Fecha Despacho"/>
+
+                    <!-- Auditoría -->
+                    <field name="changed_fields" string="Campos Modificados" optional="hide"/>
+
+                    <!-- Datos del cliente -->
+                    <field name="client_name" string="Cliente"/>
+                    <field name="client_dni" string="DNI" optional="hide"/>
+                    <field name="client_age" string="Edad" optional="hide"/>
+                    <field name="client_phone" string="Teléfono" optional="hide"/>
+                    <field name="department" string="Departamento" optional="hide"/>
+                    <field name="province" string="Provincia"/>
+                    <field name="district" string="Distrito"/>
+                    <field name="installation_address" string="Dirección" optional="hide"/>
+                    <field name="latitude" string="Latitud" optional="hide"/>
+                    <field name="longitude" string="Longitud" optional="hide"/>
+
+                    <!-- Equipos -->
+                    <field name="ont_qty" string="ONT"/>
+                    <field name="deco_qty" string="Deco"/>
+                    <field name="repeater_qty" string="Rep."/>
+                    <field name="ont_series" string="Series ONT" optional="hide"/>
+                    <field name="deco_series" string="Series Deco" optional="hide"/>
+                    <field name="repeater_series" string="Series Rep." optional="hide"/>
+
+                    <!-- Usuario -->
+                    <field name="user_name" string="Usuario" optional="hide"/>
                 </list>
             </field>
         </record>
+
         <record id="action_teloconnect_backoffice_event" model="ir.actions.act_window">
             <field name="name">Historial Analítico</field>
             <field name="res_model">teloconnect.backoffice.event</field>
             <field name="view_mode">list</field>
         </record>
+
         <menuitem id="menu_teloconnect_backoffice_event"
                   name="Historial Analítico"
                   parent="menu_teloconnect_root"

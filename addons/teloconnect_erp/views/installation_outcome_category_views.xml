@@ -7,8 +7,8 @@
             <field name="arch" type="xml">
                 <list string="Categorías de Resultado de Instalación">
                     <field name="sequence" widget="handle"/>
-                    <field name="name"/>
-                    <field name="active" widget="boolean_toggle"/>
+                    <field name="name" string="Nombre de Categoría"/>
+                    <field name="active" widget="boolean_toggle" string="Activo"/>
                 </list>
             </field>
         </record>
@@ -19,10 +19,17 @@
             <field name="arch" type="xml">
                 <form string="Categoría de Resultado de Instalación">
                     <sheet>
+                        <div class="oe_title">
+                            <label for="name" string="Nombre de Categoría"/>
+                            <h1>
+                                <field name="name" placeholder="Nombre de la categoría..."/>
+                            </h1>
+                        </div>
                         <group>
-                            <field name="name"/>
-                            <field name="sequence"/>
-                            <field name="active"/>
+                            <group string="Configuración" col="2">
+                                <field name="sequence" string="Orden de Secuencia"/>
+                                <field name="active" string="Categoría Activa" widget="boolean_toggle"/>
+                            </group>
                         </group>
                     </sheet>
                 </form>

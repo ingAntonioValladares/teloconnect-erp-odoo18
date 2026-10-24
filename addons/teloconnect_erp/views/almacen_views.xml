@@ -7,13 +7,16 @@
             <field name="model">teloconnect.almacen</field>
             <field name="arch" type="xml">
                 <list string="Despachos de Almacén">
-                    <field name="name"/>
-                    <field name="backoffice_id"/>
-                    <field name="client_name"/>
-                    <field name="district"/>
-                    <field name="technician_id"/>
-                    <field name="dispatch_date"/>
-                    <field name="state"/>
+                    <field name="name" string="N° Despacho"/>
+                    <field name="backoffice_id" string="Orden BO"/>
+                    <field name="client_name" string="Cliente"/>
+                    <field name="district" string="Distrito"/>
+                    <field name="technician_id" string="Técnico"/>
+                    <field name="dispatch_date" string="Fecha Despacho"/>
+                    <field name="state" widget="badge"
+                           decoration-info="state == 'pendiente_asig'"
+                           decoration-warning="state == 'equipos_asignados'"
+                           decoration-success="state == 'entregado_tecnico'"/>
                 </list>
             </field>
         </record>
@@ -25,33 +28,74 @@
             <field name="arch" type="xml">
                 <form string="Despacho de Almacén">
                     <header>
-                        <button name="action_assign_equipment" string="Asignar y Entregar Equipos" type="object" class="btn-primary" invisible="state == 'entregado_tecnico'"/>
+                        <button name="action_assign_equipment"
+                                string="Asignar y Entregar Equipos"
+                                type="object"
+                                class="btn-primary fw-bold"
+                                icon="fa-truck"
+                                invisible="state == 'entregado_tecnico'"/>
                         <field name="state" widget="statusbar" statusbar_visible="pendiente_asig,equipos_asignados,entregado_tecnico"/>
                     </header>
                     <sheet>
                         <div class="oe_title">
-                            <h1><field name="name" readonly="1"/></h1>
+                            <label for="name" string="N° Despacho"/>
+                            <h1>
+                                <field name="name" readonly="1"/>
+                            </h1>
                         </div>
-                        <group>
-                            <group string="Referencia Comercial">
-                                <field name="backoffice_id"/>
-                                <field name="client_name"/>
-                                <field name="district"/>
-                                <field name="installation_address"/>
-                            </group>
-                            <group string="Logística y Cuadrilla">
-                                <field name="technician_id"/>
-                                <field name="dispatch_date"/>
-                                <field name="ont_qty_required"/>
-                                <field name="deco_qty_required"/>
-                                <field name="repeater_qty_required"/>
-                            </group>
-                        </group>
-                        <group string="Control de Activos Fijos (Trazabilidad)">
-                            <field name="ont_series" placeholder="Ejemplo: ONT-001. Una por equipo; separe con comas o saltos de línea."/>
-                            <field name="deco_series" placeholder="Ejemplo: DEC-001. Una por equipo; separe con comas o saltos de línea."/>
-                            <field name="repeater_series" placeholder="Ejemplo: REP-001. Una por equipo; separe con comas o saltos de línea."/>
-                        </group>
+
+                        <notebook>
+                            <!-- ══════════════════════════════════════════
+                                 PESTAÑA 1: Información de la Orden
+                            ══════════════════════════════════════════ -->
+                            <page string="Información de la Orden" name="page_orden">
+                                <group>
+                                    <group string="Referencia Comercial" col="2">
+                                        <field name="backoffice_id" placeholder="Orden de Back Office vinculada"/>
+                                        <field name="client_name" placeholder="Nombre del cliente"/>
+                                        <field name="district" placeholder="Distrito de instalación"/>
+                                        <field name="installation_address" placeholder="Dirección exacta"/>
+                                    </group>
+                                    <group string="Logística y Cuadrilla" col="2">
+                                        <field name="technician_id" placeholder="Técnico asignado"/>
+                                        <field name="dispatch_date"/>
+                                        <separator string="Equipos Requeridos"/>
+                                        <field name="ont_qty_required" string="ONT Requeridos"/>
+                                        <field name="deco_qty_required" string="Decos Requeridos"/>
+                                        <field name="repeater_qty_required" string="Repetidores Requeridos"/>
+                                    </group>
+                                </group>
+                            </page>
+
+                            <!-- ══════════════════════════════════════════
+                                 PESTAÑA 2: Trazabilidad de Activos
+                            ══════════════════════════════════════════ -->
+                            <page string="Control de Activos (Trazabilidad)" name="page_activos">
+                                <div class="alert alert-warning mb-3" style="border-left: 4px solid #ffc107;">
+                                    <strong>&#9888; Instrucción:</strong>
+                                    Ingrese los números de serie de cada equipo despachado. Use una serie por línea o sepárelas con comas.
+                                </div>
+                                <group col="1">
+                                    <group string="Series de ONT (Módems)" col="1">
+                                        <field name="ont_series"
+                                               placeholder="Ejemplo: ONT-001, ONT-002&#10;Una por equipo; separe con comas o saltos de línea."
+                                               nolabel="1"/>
+                                    </group>
+                                    <separator/>
+                                    <group string="Series de Decodificadores" col="1">
+                                        <field name="deco_series"
+                                               placeholder="Ejemplo: DEC-001, DEC-002&#10;Una por equipo; separe con comas o saltos de línea."
+                                               nolabel="1"/>
+                                    </group>
+                                    <separator/>
+                                    <group string="Series de Repetidores" col="1">
+                                        <field name="repeater_series"
+                                               placeholder="Ejemplo: REP-001, REP-002&#10;Una por equipo; separe con comas o saltos de línea."
+                                               nolabel="1"/>
+                                    </group>
+                                </group>
+                            </page>
+                        </notebook>
                     </sheet>
                 </form>
             </field>
@@ -65,10 +109,10 @@
         </record>
 
         <!-- Menú de Almacén (Colgado del menú raíz principal) -->
-        <menuitem id="menu_teloconnect_almacen" 
-                  name="Almacén" 
-                  parent="menu_teloconnect_root" 
-                  action="action_teloconnect_almacen" 
-                  sequence="10"/>
+        <menuitem id="menu_teloconnect_almacen"
+                  name="Almacén"
+                  parent="menu_teloconnect_root"
+                  action="action_teloconnect_almacen"
+                  sequence="20"/>
     </data>
 </odoo>

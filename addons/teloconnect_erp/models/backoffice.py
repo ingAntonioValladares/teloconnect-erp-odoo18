@@ -1,8 +1,68 @@
+import json
+import urllib.request
+import urllib.parse
+import ssl
 # -*- coding: utf-8 -*-
 import re
+import unicodedata
+
+def _normalize_name(text):
+    if not text:
+        return ''
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', str(text).strip().lower())
+        if unicodedata.category(c) != 'Mn'
+    )
 
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
+
+CHICLAYO_DISTRICTS = [
+    ('Chiclayo', 'Chiclayo'),
+    ('Cayaltí', 'Cayaltí'),
+    ('Chongoyape', 'Chongoyape'),
+    ('Eten', 'Eten'),
+    ('José Leonardo Ortiz', 'José Leonardo Ortiz'),
+    ('La Victoria', 'La Victoria'),
+    ('Lagunas', 'Lagunas'),
+    ('Monsefú', 'Monsefú'),
+    ('Nueva Arica', 'Nueva Arica'),
+    ('Oyotún', 'Oyotún'),
+    ('Picsi', 'Picsi'),
+    ('Pimentel', 'Pimentel'),
+    ('Pomalca', 'Pomalca'),
+    ('Pucalá', 'Pucalá'),
+    ('Puerto Eten', 'Puerto Eten'),
+    ('Reque', 'Reque'),
+    ('Santa Rosa', 'Santa Rosa'),
+    ('Saña', 'Saña'),
+    ('Tumán', 'Tumán'),
+    ('Pátapo', 'Pátapo'),
+]
+
+LAMBAYEQUE_DISTRICTS = [
+    ('Lambayeque', 'Lambayeque'),
+    ('Chochope', 'Chochope'),
+    ('Íllimo', 'Íllimo'),
+    ('Jayanca', 'Jayanca'),
+    ('Mochumí', 'Mochumí'),
+    ('Mórrope', 'Mórrope'),
+    ('Motupe', 'Motupe'),
+    ('Olmos', 'Olmos'),
+    ('Pacora', 'Pacora'),
+    ('Salas', 'Salas'),
+    ('San José', 'San José'),
+    ('Túcume', 'Túcume'),
+]
+
+FERRENAFE_DISTRICTS = [
+    ('Ferreñafe', 'Ferreñafe'),
+    ('Cañaris', 'Cañaris'),
+    ('Incahuasi', 'Incahuasi'),
+    ('Manuel Antonio Mesones Muro', 'Manuel Antonio Mesones Muro'),
+    ('Pitipo', 'Pitipo'),
+    ('Pueblo Nuevo', 'Pueblo Nuevo'),
+]
 
 class TeloConnectBackOffice(models.Model):
     _name = 'teloconnect.backoffice'
@@ -33,11 +93,90 @@ class TeloConnectBackOffice(models.Model):
         ('ferrenafe', 'Ferreñafe')
     ], string='Provincia', required=True, default='chiclayo', tracking=True)
     district = fields.Char(string='Distrito', required=True, tracking=True)
+    district_chiclayo = fields.Selection(
+        CHICLAYO_DISTRICTS,
+        string='Distrito',
+        compute='_compute_district_selection',
+        inverse='_inverse_district_selection',
+        store=False,
+    )
+    district_lambayeque = fields.Selection(
+        LAMBAYEQUE_DISTRICTS,
+        string='Distrito',
+        compute='_compute_district_selection',
+        inverse='_inverse_district_selection',
+        store=False,
+    )
+    district_ferrenafe = fields.Selection(
+        FERRENAFE_DISTRICTS,
+        string='Distrito',
+        compute='_compute_district_selection',
+        inverse='_inverse_district_selection',
+        store=False,
+    )
+
+    @api.onchange('province')
+    def _onchange_province(self):
+        if self.province == 'chiclayo':
+            valid = [k for k, _ in CHICLAYO_DISTRICTS]
+            if self.district not in valid:
+                self.district = False
+                self.district_chiclayo = False
+            else:
+                self.district_chiclayo = self.district
+            self.district_lambayeque = False
+            self.district_ferrenafe = False
+        elif self.province == 'lambayeque':
+            valid = [k for k, _ in LAMBAYEQUE_DISTRICTS]
+            if self.district not in valid:
+                self.district = False
+                self.district_lambayeque = False
+            else:
+                self.district_lambayeque = self.district
+            self.district_chiclayo = False
+            self.district_ferrenafe = False
+        elif self.province == 'ferrenafe':
+            valid = [k for k, _ in FERRENAFE_DISTRICTS]
+            if self.district not in valid:
+                self.district = False
+                self.district_ferrenafe = False
+            else:
+                self.district_ferrenafe = self.district
+            self.district_chiclayo = False
+            self.district_lambayeque = False
+
+    @api.depends('district', 'province')
+    def _compute_district_selection(self):
+        for rec in self:
+            dist_norm = _normalize_name(rec.district)
+            rec.district_chiclayo = False
+            rec.district_lambayeque = False
+            rec.district_ferrenafe = False
+            if rec.province == 'chiclayo' and dist_norm:
+                match = next((k for k, _ in CHICLAYO_DISTRICTS if _normalize_name(k) == dist_norm), False)
+                rec.district_chiclayo = match
+            elif rec.province == 'lambayeque' and dist_norm:
+                match = next((k for k, _ in LAMBAYEQUE_DISTRICTS if _normalize_name(k) == dist_norm), False)
+                rec.district_lambayeque = match
+            elif rec.province == 'ferrenafe' and dist_norm:
+                match = next((k for k, _ in FERRENAFE_DISTRICTS if _normalize_name(k) == dist_norm), False)
+                rec.district_ferrenafe = match
+
+    def _inverse_district_selection(self):
+        for rec in self:
+            if rec.province == 'chiclayo' and rec.district_chiclayo:
+                rec.district = rec.district_chiclayo
+            elif rec.province == 'lambayeque' and rec.district_lambayeque:
+                rec.district = rec.district_lambayeque
+            elif rec.province == 'ferrenafe' and rec.district_ferrenafe:
+                rec.district = rec.district_ferrenafe
+
     installation_address = fields.Text(string='Dirección Completa (Vía/Mz/Lte/Urb/A.H.)', required=True)
     
     # Coordenadas GPS para validación geográfica
     latitude = fields.Float(string='Latitud', digits=(10, 7), tracking=True)
     longitude = fields.Float(string='Longitud', digits=(10, 7), tracking=True)
+    map_widget = fields.Char(string='Ubicación en Mapa', store=False)
 
     # --- Datos Comerciales ---
     advisor_id = fields.Char(string='Asesor Comercial', tracking=True)
@@ -166,6 +305,14 @@ class TeloConnectBackOffice(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            prov = vals.get('province', 'chiclayo')
+            if not vals.get('district'):
+                if prov == 'chiclayo' and vals.get('district_chiclayo'):
+                    vals['district'] = vals['district_chiclayo']
+                elif prov == 'lambayeque' and vals.get('district_lambayeque'):
+                    vals['district'] = vals['district_lambayeque']
+                elif prov == 'ferrenafe' and vals.get('district_ferrenafe'):
+                    vals['district'] = vals['district_ferrenafe']
             if not vals.get('client_dni'):
                 raise ValidationError("El DNI del cliente es obligatorio.")
             if vals.get('name', _('New')) == _('New') or vals.get('name', 'Nuevo') == 'Nuevo':
@@ -176,6 +323,14 @@ class TeloConnectBackOffice(models.Model):
         return records
 
     def write(self, vals):
+        prov = vals.get('province', self[:1].province if self else False)
+        if not vals.get('district'):
+            if (prov == 'chiclayo' or (not prov and any(r.province == 'chiclayo' for r in self))) and vals.get('district_chiclayo'):
+                vals['district'] = vals['district_chiclayo']
+            elif (prov == 'lambayeque' or (not prov and any(r.province == 'lambayeque' for r in self))) and vals.get('district_lambayeque'):
+                vals['district'] = vals['district_lambayeque']
+            elif (prov == 'ferrenafe' or (not prov and any(r.province == 'ferrenafe' for r in self))) and vals.get('district_ferrenafe'):
+                vals['district'] = vals['district_ferrenafe']
         if 'client_dni' in vals and not vals['client_dni']:
             raise ValidationError("El DNI del cliente es obligatorio.")
         watched_fields = self._history_tracked_fields.intersection(vals)
@@ -349,3 +504,324 @@ class TeloConnectBackOffice(models.Model):
                     'actual_install_date': False,
                     'rescheduled_install_date': False,
                 })
+
+    @api.model
+    def search_dni_api(self, dni):
+        """Consulta el DNI en la API y devuelve el nombre formateado."""
+        dni = (dni or '').strip()
+        if not dni or len(dni) != 8 or not dni.isdigit():
+            return {
+                'success': False,
+                'error': 'El DNI debe contener exactamente 8 dígitos numéricos.'
+            }
+
+        # 1. Intentar con API de apis.net.pe
+        token = self.env['ir.config_parameter'].sudo().get_param('teloconnect.dni_api_token', default='')
+        url = 'https://api.apis.net.pe/v1/dni?numero=%s' % dni
+        headers = {
+            'User-Agent': 'TeloConnect-ERP/1.0 (Odoo 18)',
+            'Accept': 'application/json',
+        }
+        if token:
+            headers['Authorization'] = 'Bearer %s' % token.strip()
+
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=5, context=ctx) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode('utf-8'))
+                    raw_nombre = data.get('nombre')
+                    if not raw_nombre:
+                        nombres = data.get('nombres', '')
+                        paterno = data.get('apellidoPaterno', '')
+                        materno = data.get('apellidoMaterno', '')
+                        raw_nombre = ('%s %s %s' % (nombres, paterno, materno)).strip()
+
+                    if raw_nombre:
+                        formatted = ' '.join(part.capitalize() for part in raw_nombre.split())
+                        return {
+                            'success': True,
+                            'name': formatted,
+                            'dni': dni,
+                        }
+        except urllib.error.HTTPError as http_err:
+            if http_err.code == 404:
+                return {'success': False, 'error': 'DNI %s no encontrado en el padrón.' % dni}
+        except Exception:
+            pass
+
+        # 2. Fallback: buscar en la base de datos local / historial
+        existing = self.search([('client_dni', '=', dni), ('client_name', '!=', False)], limit=1)
+        if existing and existing.client_name:
+            return {
+                'success': True,
+                'name': existing.client_name,
+                'dni': dni,
+                'source': 'history',
+            }
+
+        existing_evt = self.env['teloconnect.backoffice.event'].sudo().search(
+            [('client_dni', '=', dni), ('client_name', '!=', False)], limit=1
+        )
+        if existing_evt and existing_evt.client_name:
+            return {
+                'success': True,
+                'name': existing_evt.client_name,
+                'dni': dni,
+                'source': 'history',
+            }
+
+        return {
+            'success': False,
+            'error': 'No se pudo obtener información para el DNI %s (servicio temporalmente ocupado).' % dni
+        }
+
+    def action_search_dni(self):
+        """Acción de botón Python para consultar DNI."""
+        self.ensure_one()
+        dni = (self.client_dni or '').strip()
+        if not dni:
+            raise ValidationError('Ingrese primero el número de DNI.')
+        res = self.search_dni_api(dni)
+        if res.get('success') and res.get('name'):
+            self.client_name = res['name']
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'DNI Encontrado',
+                    'message': 'Se completó el nombre: %s' % res['name'],
+                    'type': 'success',
+                    'sticky': False,
+                }
+            }
+        else:
+            raise ValidationError(res.get('error') or ('No se encontró información para el DNI %s.' % dni))
+
+    @api.onchange('client_dni')
+    def _onchange_client_dni(self):
+        """Auto-consulta si el usuario escribe 8 dígitos y client_name está vacío."""
+        if self.client_dni and len(self.client_dni.strip()) == 8 and self.client_dni.strip().isdigit():
+            if not self.client_name:
+                res = self.search_dni_api(self.client_dni.strip())
+                if res.get('success') and res.get('name'):
+                    self.client_name = res['name']
+
+    @api.model
+    def reverse_geocode_api(self, lat, lng):
+        """Obtiene la dirección física, provincia y distrito a partir de coordenadas GPS."""
+        try:
+            lat = float(lat)
+            lng = float(lng)
+            if lat == 0.0 and lng == 0.0:
+                return {'success': False, 'error': 'Coordenadas en 0.0'}
+
+            url = 'https://nominatim.openstreetmap.org/reverse?format=json&lat=%s&lon=%s&zoom=18&addressdetails=1' % (lat, lng)
+            req = urllib.request.Request(url, headers={'User-Agent': 'TeloConnect-ERP/1.0 (Odoo 18)'})
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+
+            with urllib.request.urlopen(req, timeout=5, context=ctx) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode('utf-8'))
+                    addr = data.get('address', {})
+                    
+                    road = addr.get('road') or addr.get('pedestrian') or addr.get('street') or ''
+                    num = addr.get('house_number') or addr.get('street_number')
+                    city_block = addr.get('city_block') or addr.get('block')
+                    allotment = addr.get('allotment') or addr.get('plot')
+                    suburb = addr.get('neighbourhood') or addr.get('suburb') or addr.get('residential') or ''
+                    city_candidate = addr.get('city') or addr.get('town') or addr.get('village') or addr.get('municipality') or ''
+
+                    # Mapeo de distritos conocidos
+                    all_districts = {
+                        'chiclayo': {_normalize_name(k): k for k, _ in CHICLAYO_DISTRICTS},
+                        'lambayeque': {_normalize_name(k): k for k, _ in LAMBAYEQUE_DISTRICTS},
+                        'ferrenafe': {_normalize_name(k): k for k, _ in FERRENAFE_DISTRICTS},
+                    }
+
+                    # Detectar provincia
+                    prov_candidate = _normalize_name(addr.get('county') or addr.get('region') or '')
+                    detected_province = False
+                    if 'ferrenafe' in prov_candidate:
+                        detected_province = 'ferrenafe'
+                    elif 'lambayeque' in prov_candidate:
+                        detected_province = 'lambayeque'
+                    elif 'chiclayo' in prov_candidate:
+                        detected_province = 'chiclayo'
+
+                    # Detectar distrito
+                    detected_district = False
+                    for candidate in [city_candidate, suburb, addr.get('town'), addr.get('village'), addr.get('suburb')]:
+                        norm_c = _normalize_name(candidate)
+                        if not norm_c:
+                            continue
+                        provinces_to_check = [detected_province] if detected_province else ['chiclayo', 'lambayeque', 'ferrenafe']
+                        for p in provinces_to_check:
+                            if p and norm_c in all_districts[p]:
+                                detected_district = all_districts[p][norm_c]
+                                detected_province = p
+                                break
+                        if detected_district:
+                            break
+
+                    if detected_district and not detected_province:
+                        for p, ddict in all_districts.items():
+                            if _normalize_name(detected_district) in ddict:
+                                detected_province = p
+                                break
+
+                    # Formatear dirección limpia
+                    parts = []
+                    if road:
+                        if num:
+                            num_str = str(num).strip()
+                            parts.append('%s %s' % (road, num_str))
+                        elif city_block:
+                            if allotment:
+                                parts.append('%s %s %s' % (road, city_block, allotment))
+                            else:
+                                parts.append('%s %s' % (road, city_block))
+                        else:
+                            parts.append(road)
+                    elif city_block:
+                        if allotment:
+                            parts.append('%s %s' % (city_block, allotment))
+                        else:
+                            parts.append(city_block)
+                    elif suburb:
+                        parts.append(suburb)
+
+                    if suburb and suburb not in str(parts):
+                        parts.append(suburb)
+                    if detected_district:
+                        parts.append(detected_district)
+                    elif city_candidate and city_candidate not in str(parts):
+                        parts.append(city_candidate)
+
+                    clean_address = ', '.join(parts) if parts else (data.get('display_name') or '')
+
+                    return {
+                        'success': True,
+                        'address': clean_address,
+                        'province': detected_province,
+                        'district': detected_district,
+                        'full': data.get('display_name', ''),
+                    }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+        return {'success': False, 'error': 'No se pudo obtener la dirección.'}
+
+    @api.model
+    def resolve_map_input(self, raw_input):
+        """Procesa una entrada de mapa: puede ser un enlace de Google Maps,
+        coordenadas (lat, lng) o una dirección de texto."""
+        raw = (raw_input or '').strip()
+        if not raw:
+            return {'success': False, 'error': 'Entrada vacía.'}
+
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
+        # 1. Expandir enlaces cortos (maps.app.goo.gl o goo.gl)
+        if 'goo.gl' in raw or 'maps.app' in raw:
+            url_match = re.search(r'https?://[^\s]+', raw)
+            if url_match:
+                try:
+                    req = urllib.request.Request(url_match.group(0), headers={'User-Agent': 'Mozilla/5.0'})
+                    with urllib.request.urlopen(req, timeout=5, context=ctx) as r:
+                        raw = r.geturl()
+                except Exception:
+                    pass
+
+        detected_address = None
+        lat = None
+        lng = None
+
+        # 2. Extraer dirección/lugar de URL de Google Maps
+        place_match = re.search(r'/(?:place|search)/([^/@?]+)', raw)
+        if place_match:
+            raw_place = urllib.parse.unquote_plus(place_match.group(1)).strip()
+            clean = re.sub(r',?\s*\b\d{5}\b', '', raw_place)
+            clean = re.sub(r',?\s*Per[úu]', '', clean, flags=re.IGNORECASE).strip(' ,')
+            detected_address = clean
+        elif 'q=' in raw:
+            q_match = re.search(r'[?&]q=([^&]+)', raw)
+            if q_match:
+                val = urllib.parse.unquote_plus(q_match.group(1)).strip()
+                if not re.match(r'^-?\d{1,2}\.\d+[,\s]+-?\d{1,3}\.\d+$', val):
+                    clean = re.sub(r',?\s*\b\d{5}\b', '', val)
+                    clean = re.sub(r',?\s*Per[úu]', '', clean, flags=re.IGNORECASE).strip(' ,')
+                    detected_address = clean
+
+        # 3. Extraer coordenadas si están presentes (@-6.7725,-79.838 o -6.7725, -79.838)
+        coord_match = re.search(r'@?(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)', raw)
+        if coord_match:
+            lat = float(coord_match.group(1))
+            lng = float(coord_match.group(2))
+
+        # 4. Si no es URL ni solo coordenadas, es una dirección de texto
+        if not detected_address and not raw.startswith('http'):
+            cleaned = re.sub(r'\(?@?-?\d{1,2}\.\d+[,\s]+-?\d{1,3}\.\d+\)?', '', raw).strip(' ,()')
+            if cleaned:
+                detected_address = cleaned
+
+        # 5. Si tenemos dirección pero no coordenadas, geocodificar con Nominatim
+        if detected_address and (lat is None or lng is None):
+            def _search(q):
+                try:
+                    url = 'https://nominatim.openstreetmap.org/search?q=%s&format=json&limit=1' % urllib.parse.quote(q)
+                    req = urllib.request.Request(url, headers={'User-Agent': 'TeloConnect-ERP/1.0'})
+                    with urllib.request.urlopen(req, timeout=5, context=ctx) as r:
+                        return json.loads(r.read().decode('utf-8'))
+                except Exception:
+                    return []
+
+            query = detected_address if any(w in detected_address.lower() for w in ['chiclayo', 'lambayeque', 'ferrenafe']) else ('%s, Chiclayo' % detected_address)
+            s_res = _search(query)
+            if not s_res:
+                sim = re.sub(r'\b(mz\.?|manzana|lote|lt\.?)\s*[a-zA-Z0-9_\-]+', '', detected_address, flags=re.IGNORECASE).strip(' ,')
+                if sim:
+                    s_res = _search('%s, Lambayeque' % sim)
+            if s_res:
+                lat = float(s_res[0]['lat'])
+                lng = float(s_res[0]['lon'])
+
+        # 6. Si tenemos coordenadas, llamar a reverse_geocode_api para obtener datos de provincia y distrito
+        geo_data = {}
+        if lat is not None and lng is not None:
+            geo_data = self.reverse_geocode_api(lat, lng)
+
+        final_address = detected_address or geo_data.get('address') or ''
+        final_province = geo_data.get('province')
+        final_district = geo_data.get('district')
+
+        # 7. Priorizar distrito identificado en el texto de la dirección
+        norm_addr = _normalize_name(final_address)
+        sorted_districts = []
+        for p, dlist in [('chiclayo', CHICLAYO_DISTRICTS), ('lambayeque', LAMBAYEQUE_DISTRICTS), ('ferrenafe', FERRENAFE_DISTRICTS)]:
+            for orig_name, _ in dlist:
+                sorted_districts.append((_normalize_name(orig_name), orig_name, p))
+        sorted_districts.sort(key=lambda x: len(x[0]), reverse=True)
+
+        for norm_k, orig_name, p in sorted_districts:
+            if norm_k in norm_addr:
+                final_district = orig_name
+                final_province = p
+                break
+
+        return {
+            'success': True,
+            'address': final_address,
+            'latitude': lat if lat is not None else 0.0,
+            'longitude': lng if lng is not None else 0.0,
+            'province': final_province,
+            'district': final_district,
+        }

@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="teloconnect_erp.MapPickerField">
+        <div class="teloconnect-map-picker border rounded p-3 bg-light shadow-sm">
+            <!-- Header bar with Google Maps input & actions -->
+            <div t-if="!props.readonly" class="row g-2 mb-2 align-items-center">
+                <div class="col-lg-7 col-12">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white text-danger">
+                            <i class="fa fa-map-marker"/>
+                        </span>
+                        <input
+                            type="text"
+                            class="form-control"
+                            placeholder="Enlace Google Maps, dirección (ej: Libertad 123) o coordenadas..."
+                            t-model="state.googleInput"
+                            t-on-keydown="onInputKeyDown"
+                        />
+                        <button
+                            class="btn btn-primary"
+                            type="button"
+                            t-on-click="onApplyCoords"
+                            title="Ubicar en el mapa y autollenar dirección"
+                        >
+                            <i class="fa fa-map-marker me-1"/> Fijar Ubicación
+                        </button>
+                    </div>
+                </div>
+                <div class="col-lg-5 col-12 d-flex gap-1 justify-content-lg-end flex-wrap align-items-center">
+                    <span class="small text-muted me-1">Centrar:</span>
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        t-on-click="() => this.centerOnZone(-6.7714, -79.8409, 'Chiclayo')"
+                        title="Centrar en Chiclayo"
+                    >
+                        Chiclayo
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        t-on-click="() => this.centerOnZone(-6.7011, -79.9063, 'Lambayeque')"
+                        title="Centrar en Lambayeque"
+                    >
+                        Lambayeque
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        t-on-click="() => this.centerOnZone(-6.6389, -79.7889, 'Ferreñafe')"
+                        title="Centrar en Ferreñafe"
+                    >
+                        Ferreñafe
+                    </button>
+                    <a
+                        t-if="hasValidCoords"
+                        t-att-href="googleMapsUrl"
+                        target="_blank"
+                        class="btn btn-sm btn-outline-success text-decoration-none"
+                        title="Abrir este punto en Google Maps"
+                    >
+                        <i class="fa fa-external-link me-1"/> Google Maps
+                    </a>
+                </div>
+            </div>
+
+            <!-- Hint text & Coordinates badge -->
+            <div class="d-flex justify-content-between align-items-center mb-2 text-muted small flex-wrap gap-2">
+                <span>
+                    <i class="fa fa-info-circle text-info me-1"/>
+                    <t t-if="!props.readonly">
+                        Mueve el puntero o haz clic para actualizar la ubicación y autollenar la dirección completa.
+                    </t>
+                    <t t-else="">
+                        Ubicación registrada para la instalación.
+                    </t>
+                </span>
+                <span class="badge bg-dark font-monospace py-1 px-2" t-if="hasValidCoords">
+                    Lat: <t t-esc="currentLat.toFixed(7)"/> | Lng: <t t-esc="currentLng.toFixed(7)"/>
+                </span>
+                <span class="badge bg-warning text-dark py-1 px-2" t-else="">
+                    <i class="fa fa-exclamation-circle me-1"/> Coordenadas no asignadas
+                </span>
+            </div>
+
+            <!-- Detected Address banner -->
+            <div t-if="state.detectedAddress" class="alert alert-success py-1 px-2 mb-2 d-flex align-items-center justify-content-between small">
+                <span>
+                    <i class="fa fa-check-circle me-1 text-success"/>
+                    <strong>Dirección obtenida del mapa:</strong> <span class="fw-semibold" t-esc="state.detectedAddress"/>
+                </span>
+                <span class="badge bg-success-subtle text-success border border-success">
+                    Autollenado en Dirección Completa
+                </span>
+            </div>
+            <div t-elif="state.isGeocoding" class="alert alert-info py-1 px-2 mb-2 small">
+                <i class="fa fa-spinner fa-spin me-1"/>
+                <span>Detectando dirección física del mapa...</span>
+            </div>
+
+            <!-- Map container -->
+            <div
+                class="teloconnect-map-container rounded overflow-hidden"
+                style="height: 380px; width: 100%; position: relative; z-index: 1;"
+                t-ref="mapContainer"
+            />
+        </div>
+    </t>
+
+</templates>

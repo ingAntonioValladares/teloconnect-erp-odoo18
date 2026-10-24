@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="teloconnect_erp.DniSearchField">
+        <t t-if="props.readonly">
+            <span t-esc="currentValue" class="font-monospace fw-bold" />
+        </t>
+        <t t-else="">
+            <div class="teloconnect-dni-field">
+                <div class="input-group">
+                    <input
+                        type="text"
+                        class="form-control o_input font-monospace"
+                        t-att-id="props.id"
+                        t-att-value="currentValue"
+                        t-on-change="onInputChange"
+                        t-on-keydown="onKeyDown"
+                        maxlength="8"
+                        placeholder="8 dígitos"
+                        t-ref="inputRef"
+                    />
+                    <button
+                        class="btn btn-primary d-flex align-items-center gap-1 px-3"
+                        type="button"
+                        t-on-click="onSearchClick"
+                        t-att-disabled="state.isSearching"
+                        title="Buscar nombres en RENIEC por DNI"
+                    >
+                        <i t-if="state.isSearching" class="fa fa-spinner fa-spin" />
+                        <i t-else="" class="fa fa-search" />
+                        <span>Buscar</span>
+                    </button>
+                </div>
+                <div t-if="state.statusMessage" t-att-class="'form-text mt-1 text-' + state.statusType">
+                    <i t-att-class="'fa me-1 ' + (state.statusType === 'success' ? 'fa-check-circle' : 'fa-info-circle')"/>
+                    <t t-esc="state.statusMessage"/>
+                </div>
+            </div>
+        </t>
+    </t>
+
+</templates>
